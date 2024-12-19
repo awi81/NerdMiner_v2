@@ -1,4 +1,7 @@
 #include "display.h"
+#include <Preferences.h>
+
+Preferences preferences;
 
 #ifdef NO_DISPLAY
 DisplayDriver *currentDisplayDriver = &noDisplayDriver;
@@ -57,6 +60,11 @@ DisplayDriver *currentDisplayDriver = &t_hmiDisplayDriver;
 void initDisplay()
 {
   currentDisplayDriver->initDisplay();
+
+  if (preferences.begin("NerdMiner", true)) {
+      currentDisplayDriver->current_cyclic_screen = preferences.getUInt("screen_index", 0);
+      preferences.end();
+  }
 }
 
 // Alternate screen state
@@ -93,6 +101,11 @@ void resetToFirstScreen()
 void switchToNextScreen()
 {
   currentDisplayDriver->current_cyclic_screen = (currentDisplayDriver->current_cyclic_screen + 1) % currentDisplayDriver->num_cyclic_screens;
+  
+  if (preferences.begin("NerdMiner", false)) {
+        preferences.putUInt("screen_index", currentDisplayDriver->current_cyclic_screen);
+        preferences.end();
+  }
 }
 
 // Draw the current cyclic screen
