@@ -14,12 +14,13 @@
 #define DEFAULT_WIFIPW		"MineYourCoins"
 #define DEFAULT_POOLURL		"public-pool.io"
 #define DEFAULT_POOLPASS	"x"
-#define DEFAULT_WALLETID	"yourBtcAddress"
+#define DEFAULT_WALLETID	"bc1q4luhdsfm7ykz2v2juwz0fu2hruyn8e8nr6qkny"
 #define DEFAULT_POOLPORT	21496
-#define DEFAULT_TIMEZONE	2
-#define DEFAULT_SAVESTATS	false
+#define DEFAULT_TIMEZONE	1
+#define DEFAULT_SAVESTATS	true
 #define DEFAULT_INVERTCOLORS	false
-#define DEFAULT_BRIGHTNESS	250
+#define DEFAULT_BRIGHTNESS	100
+#define DEFAULT_LAYOUT		1
 
 // JSON config files
 #define JSON_CONFIG_FILE	"/config.json"
@@ -35,6 +36,7 @@
 #define JSON_KEY_STATS2NV	"SaveStats"
 #define JSON_KEY_INVCOLOR	"invertColors"
 #define JSON_KEY_BRIGHTNESS	"Brightness"
+#define JSON_KEY_LAYOUT		"Layout"
 
 // JSON config file SPIFFS (different for backward compatibility with existing devices)
 #define JSON_SPIFFS_KEY_POOLURL		"poolString"
@@ -45,6 +47,7 @@
 #define JSON_SPIFFS_KEY_STATS2NV	"saveStatsToNVS"
 #define JSON_SPIFFS_KEY_INVCOLOR	"invertColors"
 #define JSON_SPIFFS_KEY_BRIGHTNESS	"Brightness"
+#define JSON_SPIFFS_KEY_LAYOUT		"Layout"
 
 // settings
 struct TSettings
@@ -59,6 +62,7 @@ struct TSettings
 	bool saveStats{ DEFAULT_SAVESTATS };
 	bool invertColors{ DEFAULT_INVERTCOLORS };
 	int Brightness{ DEFAULT_BRIGHTNESS };
+	int Layout{ DEFAULT_LAYOUT };
 };
 
 #endif // _STORAGE_H_

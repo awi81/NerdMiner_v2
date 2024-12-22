@@ -37,6 +37,7 @@ bool nvMemory::saveConfig(TSettings* Settings)
         json[JSON_SPIFFS_KEY_STATS2NV] = Settings->saveStats;
         json[JSON_SPIFFS_KEY_INVCOLOR] = Settings->invertColors;
         json[JSON_SPIFFS_KEY_BRIGHTNESS] = Settings->Brightness;
+        json[JSON_SPIFFS_KEY_LAYOUT] = Settings->Layout;
 
         // Open config file
         File configFile = SPIFFS.open(JSON_CONFIG_FILE, "w");
@@ -107,7 +108,12 @@ bool nvMemory::loadConfig(TSettings* Settings)
                     if (json.containsKey(JSON_SPIFFS_KEY_BRIGHTNESS)) {
                         Settings->Brightness = json[JSON_SPIFFS_KEY_BRIGHTNESS].as<int>();
                     } else {
-                        Settings->Brightness = 250;
+                        Settings->Brightness = 100;
+                    }
+                    if (json.containsKey(JSON_SPIFFS_KEY_LAYOUT)) {
+                        Settings->Layout = json[JSON_SPIFFS_KEY_LAYOUT].as<int>();
+                    } else {
+                        Settings->Layout = 1;
                     }
                     return true;
                 }
