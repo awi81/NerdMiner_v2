@@ -283,6 +283,13 @@ void runStratumWorker(void *name) {
       }
       
       strcpy(mWorker.wName, Settings.BtcWallet);
+      // Falls kein eigener Worker-Name (.name) konfiguriert ist, automatisch einen
+      // eindeutigen aus der Chip-ID anhaengen -> jeder Miner einzeln beim Pool sichtbar.
+      if (strchr(mWorker.wName, '.') == NULL) {
+        char suffix[16];
+        snprintf(suffix, sizeof(suffix), ".nerd%04X", (uint16_t)(ESP.getEfuseMac() & 0xFFFF));
+        strncat(mWorker.wName, suffix, sizeof(mWorker.wName) - strlen(mWorker.wName) - 1);
+      }
       strcpy(mWorker.wPass, Settings.PoolPassword);
       // STEP 2: Pool authorize work (Block Info)
       tx_mining_auth(client, mWorker.wName, mWorker.wPass); //Don't verifies authoritzation, TODO
