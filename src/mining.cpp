@@ -393,7 +393,9 @@ void runStratumWorker(void *name) {
         continue; 
       }
       
-      strcpy(mWorker.wName, Settings.BtcWallet);
+      //Bounded: both destinations are fixed arrays and the sources come straight
+      //from user input in the config portal.
+      snprintf(mWorker.wName, sizeof(mWorker.wName), "%s", Settings.BtcWallet);
       // Falls kein eigener Worker-Name (.name) konfiguriert ist, automatisch einen
       // eindeutigen aus der MAC-Adresse anhaengen -> jeder Miner einzeln beim Pool sichtbar.
       if (strchr(mWorker.wName, '.') == NULL) {
@@ -401,7 +403,7 @@ void runStratumWorker(void *name) {
         getDeviceName(suffix + 1, sizeof(suffix) - 1);
         strncat(mWorker.wName, suffix, sizeof(mWorker.wName) - strlen(mWorker.wName) - 1);
       }
-      strcpy(mWorker.wPass, Settings.PoolPassword);
+      snprintf(mWorker.wPass, sizeof(mWorker.wPass), "%s", Settings.PoolPassword);
       // STEP 2: Pool authorize work (Block Info)
       // Antwort wird unten in der Empfangsschleife ausgewertet (auth_id)
       tx_mining_auth(client, mWorker.wName, mWorker.wPass, auth_id);
