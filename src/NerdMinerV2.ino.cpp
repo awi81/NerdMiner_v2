@@ -15,6 +15,7 @@
 #include "drivers/storage/SDCard.h"
 #include "ShaTests/nerdSHA_HWTest.h"
 #include "timeconst.h"
+#include "otaUpdate.h"
 
 #ifdef TOUCH_ENABLE
 #include "TouchHandler.h"
@@ -75,6 +76,9 @@ void setup()
   Serial.setTimeout(0);
   delay(SECOND_MS/10);
 
+  // Nach mehreren Abstürzen in Folge auf die vorige Firmware zurückschalten (Update per WLAN)
+  otaBootGuard();
+
   esp_task_wdt_init(WDT_MINER_TIMEOUT, true);
   // Idle task that would reset WDT never runs, because core 0 gets fully utilized
   disableCore0WDT();
@@ -126,6 +130,9 @@ void setup()
   /******** INIT WIFI ************/
   init_WifiManager();
 
+  /******** UPDATE PER WLAN ************/
+  otaSetup();
+
   /******** CREATE TASK TO PRINT SCREEN *****/
   //tft.pushImage(0, 0, MinerWidth, MinerHeight, MinerScreen);
   // Higher prio monitor task
@@ -161,10 +168,10 @@ void setup()
   TaskHandle_t minerTask1, minerTask2 = NULL;
   #ifdef HARDWARE_SHA265
     #if defined(CONFIG_IDF_TARGET_ESP32)
-    xTaskCreate(minerWorkerHw, "MinerHw-0", 3584, (void*)0, 3, &minerTask1); // Reduced for ESP32 classic
+    xTaskCreate(minerWorkerHw, "MinerHw-0", 4096, (void*)0, 3, &minerTask1); // Job-Kopie liegt jetzt auf dem Stack
     //xTaskCreate(minerWorkerSw, "MinerSw-0", 5000, (void*)0, 1, &minerTask1); // Reduced for ESP32 classic
     #else
-    xTaskCreate(minerWorkerHw, "MinerHw-0", 4096, (void*)0, 3, &minerTask1);
+    xTaskCreate(minerWorkerHw, "MinerHw-0", 4608, (void*)0, 3, &minerTask1);
     #endif
   #else
     #if defined(CONFIG_IDF_TARGET_ESP32)
@@ -184,7 +191,9 @@ void setup()
   esp_task_wdt_add(minerTask2);
 #endif
 
-  vTaskPrioritySet(NULL, 4);
+  // Loop-Task (Tasten, Touch, Update-Server) über der Display-Task (Prio 5): sonst verhungert das
+  // Update per WLAN, während das Display zeichnet. Die Loop schläft fast immer (vTaskDelay).
+  vTaskPrioritySet(NULL, 6);
 
   /******** MONITOR SETUP *****/
   setup_monitor();
@@ -215,6 +224,7 @@ void loop() {
   touchHandler.isTouched();
 #endif
   wifiManagerProcess(); // avoid delays() in loop when non-blocking and other long running code
+  otaLoop();
 
   vTaskDelay(50 / portTICK_PERIOD_MS);
 }

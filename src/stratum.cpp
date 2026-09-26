@@ -116,12 +116,13 @@ mining_subscribe init_mining_subscribe(void)
 }
 
 // STEP 2: Pool server auth (authorize)
-bool tx_mining_auth(WiFiClient& client, const char * user, const char * pass)
+bool tx_mining_auth(WiFiClient& client, const char * user, const char * pass, unsigned long &auth_id)
 {
     char payload[BUFFER] = {0};
 
     // Authorize
     id = getNextId(id);
+    auth_id = id;
     sprintf(payload, "{\"params\": [\"%s\", \"%s\"], \"id\": %u, \"method\": \"mining.authorize\"}\n", 
       user, pass, id);
     
@@ -265,6 +266,23 @@ unsigned long parse_extract_id(const String &line)
     if (!doc.containsKey("id"))
         return 0;
 
+    unsigned long id = doc["id"];
+
+    return id;
+}
+
+// Wie oben, liefert zusätzlich das "result"-Feld (true = Share/Autorisierung akzeptiert)
+unsigned long parse_extract_id(const String &line, bool &result)
+{
+    result = false;
+    DeserializationError error = deserializeJson(doc, line);
+    if (error)
+        return 0;
+
+    if (!doc.containsKey("id"))
+        return 0;
+
+    result = doc["result"].as<bool>();
     unsigned long id = doc["id"];
 
     return id;

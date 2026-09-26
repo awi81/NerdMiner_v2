@@ -4,8 +4,8 @@
 
 #include <TFT_eSPI.h>
 #include <TFT_eTouch.h>
-#include "media/images_320_170.h"
-#include "media/images_bottom_320_70.h"
+// Komprimierte Fassung von images_320_170.h/images_bottom_320_70.h (tools/compress_images.py)
+#include "media/images_cyd_z.h"
 #include "media/myFonts.h"
 #include "media/Free_Fonts.h"
 #include "version.h"
@@ -104,6 +104,9 @@ void esp32_2432S028R_Init(void)
   pData.bestDifficulty = "0";
   pData.workersHash = "0";
   pData.workersCount = 0;
+
+  // Prüft einmal beim Start, dass alle komprimierten Bilder korrekt entpackt werden (Log: "[IMG] ...")
+  zImageSelfTest(cydZImages, cydZImageNames, sizeof(cydZImages) / sizeof(cydZImages[0]));
   //Serial.println("=========== Fim Display ==============") ;
 }
 
@@ -116,7 +119,34 @@ void esp32_2432S028R_AlternateScreenState(void)
     ledcWrite(0, 0);
   } else {
     ledcWrite(0, Settings.Brightness);
+    hasChangedScreen = true; // Während "aus" wurde nichts gezeichnet -> komplett neu aufbauen
   }
+}
+
+// Nur alle DRAW_INTERVAL_ms neu zeichnen, bei Screen-Wechsel/Touch/Einschalten (hasChangedScreen)
+// sofort, bei dunklem Display gar nicht. Jede Sekunde zu zeichnen kostete gemessen keine Hashrate,
+// hält aber die Display-Task fast pausenlos beschäftigt (Bilder entpacken, TrueType rendern).
+#ifndef DRAW_INTERVAL_ms
+#define DRAW_INTERVAL_ms (5UL * 1000)
+#endif
+static unsigned long lastDrawMillis = 0;
+
+// true = diesen Durchlauf nicht zeichnen (und damit auch keine API-Abfragen auslösen).
+// Hashrate-Mittelwert und Statuszeile im Log laufen trotzdem jede Sekunde weiter.
+static bool skipDrawing(unsigned long mElapsed)
+{
+  bool displayOff = ledcRead(0) == 0;
+  bool drawDue = hasChangedScreen || lastDrawMillis == 0 || millis() - lastDrawMillis >= DRAW_INTERVAL_ms;
+  if (!displayOff && drawDue)
+  {
+    lastDrawMillis = millis();
+    return false;
+  }
+  mining_data data = getMiningData(mElapsed);
+  Serial.printf(">>> Completed %s share(s), %s Khashes, avg. hashrate %s KH/s%s\n",
+                data.completedShares.c_str(), data.totalKHashes.c_str(), data.currentHashRate.c_str(),
+                displayOff ? " (display off)" : "");
+  return true;
 }
 
 void esp32_2432S028R_AlternateRotation(void)
@@ -163,11 +193,11 @@ void printPoolData(){
           }       
           background.setSwapBytes(true);
           if (bottomScreenBlue) {
-            background.pushImage(0, -20, 320, 70, bottonPoolScreen);
-            tft.pushImage(0,170,320,20,bottonPoolScreen);      
+            pushImageZ(background, 0, -20, bottonPoolScreen_z);
+            pushImageZ(tft, 0, 170, bottonPoolScreen_z, 20);      
           } else {
-            background.pushImage(0, -20, 320, 70, bottonPoolScreen_g);
-            tft.pushImage(0,170,320,20,bottonPoolScreen_g);
+            pushImageZ(background, 0, -20, bottonPoolScreen_g_z);
+            pushImageZ(tft, 0, 170, bottonPoolScreen_g_z, 20);
           }
                 
           render.setDrawer(background); // Link drawing object to background instance (so font will be rendered on background)
@@ -211,11 +241,13 @@ void printPoolData(){
 
 void esp32_2432S028R_MinerScreen(unsigned long mElapsed)
 {
+  if (skipDrawing(mElapsed)) return;
+
   mining_data data = getMiningData(mElapsed);
 
   printPoolData();
 
-  if (hasChangedScreen) tft.pushImage(0, 0, initWidth, initHeight, MinerScreen);
+  if (hasChangedScreen) pushImageZ(tft, 0, 0, MinerScreen_z);
     
   hasChangedScreen = false; 
  
@@ -223,7 +255,7 @@ void esp32_2432S028R_MinerScreen(unsigned long mElapsed)
   // Recreate sprite to the right side of the screen
   createBackgroundSprite(WIDTH-5, HEIGHT-7);
   //Print background screen    
-  background.pushImage(-190, 0, MinerWidth, MinerHeight, MinerScreen);
+  pushImageZ(background, -190, 0, MinerScreen_z);
   
   // Total hashes
   render.setFontSize(18);
@@ -269,7 +301,7 @@ void esp32_2432S028R_MinerScreen(unsigned long mElapsed)
   // Create background sprite to print data at once
   createBackgroundSprite(WIDTH-7, HEIGHT-100); // initHeight); //Background Sprite
   //Print background screen    
-  background.pushImage(0, -90, MinerWidth, MinerHeight, MinerScreen);
+  pushImageZ(background, 0, -90, MinerScreen_z);
 
   // Hashrate 
   render.setFontSize(35);
@@ -294,8 +326,9 @@ void esp32_2432S028R_MinerScreen(unsigned long mElapsed)
 
 void esp32_2432S028R_ClockScreen(unsigned long mElapsed)
 {
+  if (skipDrawing(mElapsed)) return;
 
-  if (hasChangedScreen) tft.pushImage(0, 0, minerClockWidth, minerClockHeight, minerClockScreen);
+  if (hasChangedScreen) pushImageZ(tft, 0, 0, minerClockScreen_z);
   
   printPoolData();
 
@@ -307,7 +340,7 @@ void esp32_2432S028R_ClockScreen(unsigned long mElapsed)
   createBackgroundSprite(270,36);
 
   // Print background screen
-  background.pushImage(0, -130, minerClockWidth, minerClockHeight, minerClockScreen);
+  pushImageZ(background, 0, -130, minerClockScreen_z);
   // Hashrate
   render.setFontSize(25);
   render.setFontColor(TFT_BLACK);
@@ -324,7 +357,7 @@ void esp32_2432S028R_ClockScreen(unsigned long mElapsed)
 
   createBackgroundSprite(169,105);
   // Print background screen
-  background.pushImage(-130, -3, minerClockWidth, minerClockHeight, minerClockScreen);
+  pushImageZ(background, -130, -3, minerClockScreen_z);
   
   // Print BTC Price
   background.setFreeFont(FSSB9);
@@ -356,7 +389,9 @@ void esp32_2432S028R_ClockScreen(unsigned long mElapsed)
 
 void esp32_2432S028R_GlobalHashScreen(unsigned long mElapsed)
 {
-  if (hasChangedScreen) tft.pushImage(0, 0, globalHashWidth, globalHashHeight, globalHashScreen);
+  if (skipDrawing(mElapsed)) return;
+
+  if (hasChangedScreen) pushImageZ(tft, 0, 0, globalHashScreen_z);
   
   printPoolData();
   
@@ -367,7 +402,7 @@ void esp32_2432S028R_GlobalHashScreen(unsigned long mElapsed)
   // Create background sprite to print data at once
   createBackgroundSprite(169,105);
   // Print background screen
-  background.pushImage(-160, -3, minerClockWidth, minerClockHeight, globalHashScreen);
+  pushImageZ(background, -160, -3, globalHashScreen_z);
   
   // Print BTC Price
   background.setFreeFont(FSSB9);
@@ -401,7 +436,7 @@ void esp32_2432S028R_GlobalHashScreen(unsigned long mElapsed)
  // Create background sprite to print data at once
   createBackgroundSprite(280,30);
   // Print background screen
-  background.pushImage(0, -139, minerClockWidth, minerClockHeight, globalHashScreen);
+  pushImageZ(background, 0, -139, globalHashScreen_z);
   //background.fillSprite(TFT_CYAN);
   // Print Global Hashrate
   render.setFontSize(17);
@@ -426,7 +461,7 @@ void esp32_2432S028R_GlobalHashScreen(unsigned long mElapsed)
  // Create background sprite to print data at once
   createBackgroundSprite(140,40);
   // Print background screen
-  background.pushImage(-5, -100, minerClockWidth, minerClockHeight, globalHashScreen);
+  pushImageZ(background, -5, -100, globalHashScreen_z);
   //background.fillSprite(TFT_CYAN);
   // Print BlockHeight
   render.setFontSize(28);
@@ -447,8 +482,9 @@ void esp32_2432S028R_GlobalHashScreen(unsigned long mElapsed)
 }
 void esp32_2432S028R_BTCprice(unsigned long mElapsed)
 {
-  
-  if (hasChangedScreen) tft.pushImage(0, 0, priceScreenWidth, priceScreenHeight, priceScreen);
+  if (skipDrawing(mElapsed)) return;
+
+  if (hasChangedScreen) pushImageZ(tft, 0, 0, priceScreen_z);
   printPoolData();
   hasChangedScreen = false;
 
@@ -458,7 +494,7 @@ void esp32_2432S028R_BTCprice(unsigned long mElapsed)
   createBackgroundSprite(270,36);
 
   // Print background screen
-  background.pushImage(0, -130, priceScreenWidth, priceScreenHeight, priceScreen);
+  pushImageZ(background, 0, -130, priceScreen_z);
   // Hashrate
   render.setFontSize(25);
   render.setFontColor(TFT_BLACK);
@@ -475,7 +511,7 @@ void esp32_2432S028R_BTCprice(unsigned long mElapsed)
 
   createBackgroundSprite(180,105);
   // Print background screen
-  background.pushImage(-130, -3, priceScreenWidth, priceScreenHeight, priceScreen);
+  pushImageZ(background, -130, -3, priceScreen_z);
   
   // Print Hour
   background.setFreeFont(FSSB9);
@@ -509,7 +545,7 @@ void esp32_2432S028R_BTCprice(unsigned long mElapsed)
 void esp32_2432S028R_LoadingScreen(void)
 {
   tft.fillScreen(TFT_BLACK);
-  tft.pushImage(0, 33, initWidth, initHeight, initScreen);
+  pushImageZ(tft, 0, 33, initScreen_z);
   tft.setTextColor(TFT_BLACK);
   tft.drawString(CURRENT_VERSION, 24, 147, FONT2);
   // delay(2000);
@@ -520,7 +556,7 @@ void esp32_2432S028R_LoadingScreen(void)
 void esp32_2432S028R_SetupScreen(void)
 {
   tft.fillScreen(TFT_BLACK);
-  tft.pushImage(0, 33, setupModeWidth, setupModeHeight, setupModeScreen);
+  pushImageZ(tft, 0, 33, setupModeScreen_z);
 }
 
 void esp32_2432S028R_AnimateCurrentScreen(unsigned long frame)
@@ -566,7 +602,8 @@ void esp32_2432S028R_DoLedStuff(unsigned long frame)
       previousTouchMillis = currentMillis;
     }
 
-    if (currentScreen != currentDisplayDriver->current_cyclic_screen) hasChangedScreen ^= true;
+    // "= true" statt "^= true": zwei Screen-Wechsel vor dem nächsten Zeichnen hoben sich sonst auf
+    if (currentScreen != currentDisplayDriver->current_cyclic_screen) hasChangedScreen = true;
     currentScreen = currentDisplayDriver->current_cyclic_screen;
 
   switch (mMonitor.NerdStatus)

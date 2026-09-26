@@ -54,13 +54,24 @@ void setup_monitor(void){
 #endif
 }
 
+// false, wenn der letzte Versuch weniger als API_RETRY_ms zurückliegt; sonst Versuch vermerken.
+// Verhindert, dass ein fehlschlagender Abruf jede Sekunde wiederholt wird.
+static bool apiAttemptDue(unsigned long &lastAttempt){
+    unsigned long now = millis();
+    if (lastAttempt != 0 && now - lastAttempt < API_RETRY_ms) return false;
+    lastAttempt = now;
+    return true;
+}
+
 unsigned long mGlobalUpdate =0;
+static unsigned long mGlobalAttempt = 0;
 
 void updateGlobalData(void){
     
     if((mGlobalUpdate == 0) || (millis() - mGlobalUpdate > UPDATE_Global_min * 60 * 1000)){
     
         if (WiFi.status() != WL_CONNECTED) return;
+        if (!apiAttemptDue(mGlobalAttempt)) return;
             
         //Make first API call to get global hash and current difficulty
         HTTPClient http;
@@ -121,12 +132,14 @@ void updateGlobalData(void){
 }
 
 unsigned long mHeightUpdate = 0;
+static unsigned long mHeightAttempt = 0;
 
 String getBlockHeight(void){
     
     if((mHeightUpdate == 0) || (millis() - mHeightUpdate > UPDATE_Height_min * 60 * 1000)){
     
         if (WiFi.status() != WL_CONNECTED) return current_block;
+        if (!apiAttemptDue(mHeightAttempt)) return current_block;
             
         HTTPClient http;
         http.setTimeout(10000);
@@ -153,12 +166,13 @@ String getBlockHeight(void){
 }
 
 unsigned long mBTCUpdate = 0;
+static unsigned long mBTCAttempt = 0;
 
 String getBTCprice(void){
     
     if((mBTCUpdate == 0) || (millis() - mBTCUpdate > UPDATE_BTC_min * 60 * 1000)){
     
-        if (WiFi.status() != WL_CONNECTED) {
+        if (WiFi.status() != WL_CONNECTED || !apiAttemptDue(mBTCAttempt)) {
             static char price_buffer[16];
             snprintf(price_buffer, sizeof(price_buffer), "$%u", bitcoin_price);
             return String(price_buffer);
@@ -436,10 +450,13 @@ String getPoolAPIUrl(void) {
     return poolAPIUrl;
 }
 
+static unsigned long mPoolAttempt = 0;
+
 pool_data getPoolData(void){
     //pool_data pData;    
     if((mPoolUpdate == 0) || (millis() - mPoolUpdate > UPDATE_POOL_min * 60 * 1000)){      
         if (WiFi.status() != WL_CONNECTED) return pData;            
+        if (!apiAttemptDue(mPoolAttempt)) return pData;
         //Make first API call to get global hash and current difficulty
         HTTPClient http;
         http.setTimeout(10000);        

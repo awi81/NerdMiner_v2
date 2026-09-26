@@ -24,6 +24,8 @@ bool isSha256Valid(const void* sha256);
 miner_data calculateMiningData(mining_subscribe& mWorker, mining_job mJob);
 bool checkValid(unsigned char* hash, unsigned char* target);
 void suffix_string(double val, char *buf, size_t bufsiz, int sigdigits);
+// Gerätename aus den letzten beiden MAC-Bytes, z. B. "nerd3CF0" (Worker-Name beim Pool, mDNS-Name)
+void getDeviceName(char *buf, size_t bufsiz);
 
 uint32_t crc32_reset();
 uint32_t crc32_add(uint32_t crc32, const void* data, size_t size);

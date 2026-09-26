@@ -195,6 +195,8 @@ void init_WifiManager()
     //Advanced settings
     wm.setConfigPortalBlocking(false); //Hacemos que el portal no bloquee el firmware
     wm.setConnectTimeout(40); // how long to try to connect for before continuing
+    // Nach einem Neustart scheitert der erste Versuch manchmal sofort -> sonst unnötig Einrichtungs-Hotspot
+    wm.setConnectRetries(3);
     wm.setConfigPortalTimeout(180); // auto close configportal after n seconds
     // wm.setCaptivePortalEnable(false); // disable captive portal redirection
     // wm.setAPClientCheck(true); // avoid timeout if client connected to softap

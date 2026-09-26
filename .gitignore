@@ -8,3 +8,7 @@ NerdMinerLog.txt
 bin/0x10000_firmware.bin
 logs
 boards/ESP32_wroom_guide.md
+
+# Lokales Passwort für das Update per WLAN
+ota_secret*.ini
+__pycache__/

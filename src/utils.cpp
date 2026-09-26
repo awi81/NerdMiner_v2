@@ -122,16 +122,13 @@ bool isSha256Valid(const void* sha256)
 /****************** PREMINING CALCULATIONS ********************/
 
 
+// hash und target sind beide little-endian (Byte 31 = höchstwertig); gültig, wenn hash <= target
 bool checkValid(unsigned char* hash, unsigned char* target) {
   bool valid = true;
-  unsigned char diff_target[32];
-  memcpy(diff_target, &target, 32);
-  //convert target to little endian for comparison
-  reverse_bytes(diff_target, 32);
 
-  for(uint8_t i=31; i>=0; i--) {
-    if(hash[i] > diff_target[i]) {
-      valid = false;
+  for(int i=31; i>=0; i--) {
+    if(hash[i] != target[i]) {
+      valid = hash[i] < target[i];
       break;
     }
   }
@@ -202,11 +199,8 @@ miner_data calculateMiningData(mining_subscribe& mWorker, mining_job mJob){
     // bytearray target
     size_t size_target = to_byte_array(target, 32, mMiner.bytearray_target);
 
-    for (size_t j = 0; j < 8; j++) {
-      mMiner.bytearray_target[j] ^= mMiner.bytearray_target[size_target - 1 - j];
-      mMiner.bytearray_target[size_target - 1 - j] ^= mMiner.bytearray_target[j];
-      mMiner.bytearray_target[j] ^= mMiner.bytearray_target[size_target - 1 - j];
-    }
+    // big-endian -> little-endian (vorher wurden nur die äußeren 8 von 16 Bytepaaren getauscht)
+    reverse_bytes(mMiner.bytearray_target, size_target);
 
     // get extranonce2 - extranonce2 = hex(random.randint(0,2**32-1))[2:].zfill(2*extranonce2_size)
     //To review
@@ -587,6 +581,14 @@ static const uint32_t s_crc32_table[256] =
     0xB3667A2E, 0xC4614AB8, 0x5D681B02, 0x2A6F2B94,
     0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D
 };
+
+void getDeviceName(char *buf, size_t bufsiz)
+{
+    // getEfuseMac liefert die MAC mit Byte 0 im niedrigsten Byte. Die ersten drei Bytes sind die
+    // Herstellerkennung (bei vielen Geräten gleich), eindeutig sind erst die letzten.
+    uint64_t mac = ESP.getEfuseMac();
+    snprintf(buf, bufsiz, "nerd%02X%02X", (uint8_t)(mac >> 32), (uint8_t)(mac >> 40));
+}
 
 uint32_t crc32_reset()
 {
