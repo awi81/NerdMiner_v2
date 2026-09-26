@@ -73,6 +73,16 @@ def main():
             checked = info["hw_checked"] - f[1]["hw_checked"]
             errors = info["hw_errors"] - f[1]["hw_errors"]
             line += f"  Prüffehler {errors}/{checked}"
+            if "hw_hashes" in info:
+                # Kandidat = untere 16 Bit null, also 1 von 65536 HW-Hashes; deutlich weniger hieße verlorene Treffer
+                expected = ((info["hw_hashes"] - f[1]["hw_hashes"]) & 0xFFFFFFFF) / 65536
+                line += f" (erwartet ~{expected:.0f})"
+        if "hw_idle" in info and "hw_idle" in f[1] and not restarted:
+            # je Zählschritt wartet der HW-Miner 2 ms ohne Job
+            idle = (info["hw_idle"] - f[1]["hw_idle"]) * 0.002 / (l[0] - f[0]) * 100
+            line += f"  HW-Leerlauf {idle:.1f} %"
+        if "hw_kat" in info and info["hw_kat"] >= 0:
+            line += "  Selbsttest ok" if info["hw_kat"] == 1 else "  SELBSTTEST FEHLER"
         if restarted:
             line += "  NEUSTART während der Messung"
         if "rssi" in info:

@@ -21,7 +21,11 @@
 
 //10 Jobs per second
 #define NONCE_PER_JOB_SW 4096
-#define NONCE_PER_JOB_HW 16*1024
+// 64K statt 16K: der Stratum-Task füllt nur alle >= 50 ms nach (und wartet, solange das Display zeichnet);
+// mit 4 x 16K Vorrat stand der HW-Miner bei ~790 KH/s 1,7 % der Zeit ohne Job, mit 64K 0,2 % (hw_idle).
+#ifndef NONCE_PER_JOB_HW
+#define NONCE_PER_JOB_HW 64*1024
+#endif
 
 //#define I2C_SLAVE
 
@@ -50,6 +54,11 @@ uint32_t hashesSw = 0;
 // Hardware-Treffer, die in Software nachgerechnet wurden, und davon abweichende (/info)
 uint32_t hwChecked = 0;
 uint32_t hwErrors = 0;
+// Wie oft der HW-Miner ohne Job 2 ms warten musste (/info)
+uint32_t hwIdle = 0;
+// Selbsttest der HW-Schleife beim Start (1 = ok, 0 = falsch, -1 = nicht gelaufen) und Taktdiagnose (/info)
+int hwKat = -1;
+char hwBench[64] = "";
 uint32_t Mhashes = 0;
 uint32_t totalKHashes = 0;
 uint32_t elapsedKHs = 0;
@@ -1132,6 +1141,175 @@ static inline IRAM_ATTR void nerd_sha_ll_fill_text_block_sha256_double()
     reg_addr_buf[15] = 0x00000100;
 }
 
+// Nonce-Schleife in Assembler ist Standard (467 -> ~790 KH/s je CYD); -DNERD_C_LOOP = bisherige C-Schleife.
+#ifndef NERD_C_LOOP
+#define NERD_ASM_LOOP
+#endif
+
+#ifdef NERD_ASM_LOOP
+// Nonce-Schleife komplett in Assembler, Grundlage von Gheop (PR #727, Branch all-fixes, 4d00b0b):
+// - SHA_TEXT_BASE bleibt in einem Register, die Befehlsregister START/CONTINUE/LOAD/BUSY liegen bei
+//   +0x90/0x94/0x98/0x9C und sind von dort per Offset erreichbar (gcc lädt jede Adresse neu).
+// - Block 2 wird geschrieben, während die Engine noch Block 1 rechnet.
+// - BUSY wird direkt gelesen (ohne APB-Vorlesen), nach jedem Befehl ein memw.
+// Dazu hier: die obere Hälfte von Block 1 des nächsten Nonce schon während Block 3 (nach einer Wartezeit,
+// siehe unten), und die Schleife liegt im Flash statt im IRAM.
+// Der Nonce läuft in Big-Endian-Form mit (+0x01000000 je Schritt), daher höchstens 256 Nonces je Aufruf
+// ohne Überlauf des untersten Bytes. Rückgabe: Anzahl nicht mehr gerechneter Nonces. Sobald die unteren
+// 16 Bit von SHA_TEXT[7] null sind (Kandidat), endet die Schleife und der Digest steht noch in SHA_TEXT.
+
+// Die Engine liest einen Block nicht beim START ein, sondern Wort für Wort in den ersten Runden. Die obere
+// Hälfte von Block 1 des nächsten Nonce darf daher erst nach einer Wartezeit in TEXT (gemessen auf den
+// CYDs: 0 nop = alle Hashes falsch, 8/16/24 nop ~10 %, ab 32 keine; 32/40/48 nop gleich schnell).
+// Bringt +4,5 %, weil die Engine zwischen LOAD und dem nächsten START sonst auf 8 Schreibzugriffe wartet.
+// Danach ist die Schleife am Limit der Engine: ~318 Takte je Nonce = 3 Blöcke + 2 LOADs (-DNERD_ASM_BENCH).
+#ifndef NERD_ASM_PREFILL
+#define NERD_ASM_PREFILL 48
+#endif
+#define NERD_STR2(x) #x
+#define NERD_STR(x) NERD_STR2(x)
+#define NERD_ASM_B1_HIGH \
+      "l32i.n  a8,  %[in], 32\n\t"  "s32i.n  a8,  %[sb], 32\n\t" \
+      "l32i.n  a8,  %[in], 36\n\t"  "s32i.n  a8,  %[sb], 36\n\t" \
+      "l32i.n  a8,  %[in], 40\n\t"  "s32i.n  a8,  %[sb], 40\n\t" \
+      "l32i.n  a8,  %[in], 44\n\t"  "s32i.n  a8,  %[sb], 44\n\t" \
+      "l32i.n  a8,  %[in], 48\n\t"  "s32i.n  a8,  %[sb], 48\n\t" \
+      "l32i.n  a8,  %[in], 52\n\t"  "s32i.n  a8,  %[sb], 52\n\t" \
+      "l32i.n  a8,  %[in], 56\n\t"  "s32i.n  a8,  %[sb], 56\n\t" \
+      "l32i.n  a8,  %[in], 60\n\t"  "s32i.n  a8,  %[sb], 60\n\t"
+// Bewusst NICHT IRAM_ATTR: im IRAM konkurriert die Schleife mit dem SW-Miner (nerd_sha256d_baked, IRAM)
+// auf dem anderen Kern um den Speicher. Aus dem Flash (Cache des eigenen Kerns) gemessen +7 %, HW und SW.
+static uint32_t nerd_sha_nonce_run_asm(const void *in, uint32_t be_nonce0, uint32_t count)
+{
+  uint32_t remaining = count;
+  __asm__ __volatile__(
+      "mov     a13, %[n0]\n\t"
+      "movi    a12, 0x01000000\n\t"
+      NERD_ASM_B1_HIGH   // Wörter 8..15 von Block 1; im Durchlauf dann schon während Block 3 (unten)
+  "0:\n\t"
+      "l32i.n  a8,  %[in], 0\n\t"   "s32i.n  a8,  %[sb], 0\n\t"
+      "l32i.n  a8,  %[in], 4\n\t"   "s32i.n  a8,  %[sb], 4\n\t"
+      "l32i.n  a8,  %[in], 8\n\t"   "s32i.n  a8,  %[sb], 8\n\t"
+      "l32i.n  a8,  %[in], 12\n\t"  "s32i.n  a8,  %[sb], 12\n\t"
+      "l32i.n  a8,  %[in], 16\n\t"  "s32i.n  a8,  %[sb], 16\n\t"
+      "l32i.n  a8,  %[in], 20\n\t"  "s32i.n  a8,  %[sb], 20\n\t"
+      "l32i.n  a8,  %[in], 24\n\t"  "s32i.n  a8,  %[sb], 24\n\t"
+      "l32i.n  a8,  %[in], 28\n\t"  "s32i.n  a8,  %[sb], 28\n\t"
+      "movi.n  a8, 1\n\t"           "s32i    a8, %[sb], 0x90\n\t"  "memw\n\t"   // START Block 1
+      // Block 2 (Headerende + Nonce + Padding), während die Engine Block 1 rechnet
+      "l32i.n  a8,  %[in], 64\n\t"  "s32i.n  a8,  %[sb], 0\n\t"
+      "l32i.n  a8,  %[in], 68\n\t"  "s32i.n  a8,  %[sb], 4\n\t"
+      "l32i.n  a8,  %[in], 72\n\t"  "s32i.n  a8,  %[sb], 8\n\t"
+      "s32i.n  a13, %[sb], 12\n\t"
+      "movi    a10, 0x80000000\n\t" "s32i.n  a10, %[sb], 16\n\t"
+      "movi.n  a9, 0\n\t"
+      "s32i.n  a9,  %[sb], 20\n\t"
+      "s32i.n  a9,  %[sb], 24\n\t"
+      "s32i.n  a9,  %[sb], 28\n\t"
+      "s32i.n  a9,  %[sb], 32\n\t"
+      "s32i.n  a9,  %[sb], 36\n\t"
+      "s32i.n  a9,  %[sb], 40\n\t"
+      "s32i.n  a9,  %[sb], 44\n\t"
+      "s32i.n  a9,  %[sb], 48\n\t"
+      "s32i.n  a9,  %[sb], 52\n\t"
+      "s32i.n  a9,  %[sb], 56\n\t"
+      "movi    a11, 0x280\n\t"      "s32i.n  a11, %[sb], 60\n\t"
+      "1: l32i    a8, %[sb], 0x9C\n\t"  "bnez.n  a8, 1b\n\t"
+      "movi.n  a8, 1\n\t"           "s32i    a8, %[sb], 0x94\n\t"  "memw\n\t"   // CONTINUE Block 2
+      "2: l32i    a8, %[sb], 0x9C\n\t"  "bnez.n  a8, 2b\n\t"
+      "movi.n  a8, 1\n\t"           "s32i    a8, %[sb], 0x98\n\t"  "memw\n\t"   // LOAD Digest 1
+      "movi    a11, 0x100\n\t"
+      "3: l32i    a8, %[sb], 0x9C\n\t"  "bnez.n  a8, 3b\n\t"
+      // zweites SHA256: Digest 1 steht in TEXT[0..7], fehlt nur das Padding (TEXT[9..14] noch 0 von Block 2)
+      "s32i.n  a10, %[sb], 32\n\t"  "s32i.n  a11, %[sb], 60\n\t"
+      "movi.n  a8, 1\n\t"           "s32i    a8, %[sb], 0x90\n\t"  "memw\n\t"   // START Block 3
+      // Wörter 8..15 von Block 1 des nächsten Nonce schon während Block 3, nach der Wartezeit
+      ".rept " NERD_STR(NERD_ASM_PREFILL) "\n\t" "nop\n\t" ".endr\n\t"
+      NERD_ASM_B1_HIGH
+      "add     a13, a13, a12\n\t"
+      "addi    %[cnt], %[cnt], -1\n\t"
+      "4: l32i    a8, %[sb], 0x9C\n\t"  "bnez.n  a8, 4b\n\t"
+      "movi.n  a8, 1\n\t"           "s32i    a8, %[sb], 0x98\n\t"  "memw\n\t"   // LOAD Digest 2
+      "5: l32i    a8, %[sb], 0x9C\n\t"  "bnez.n  a8, 5b\n\t"
+      "l16ui   a8, %[sb], 28\n\t"
+      "beqz.n  a8, 9f\n\t"
+      "bnez    %[cnt], 0b\n\t"
+  "9:\n\t"
+      : [cnt] "+r" (remaining)
+      : [sb] "r" ((uint32_t *)(SHA_TEXT_BASE)), [in] "r" (in), [n0] "r" (be_nonce0)
+      : "a8", "a9", "a10", "a11", "a12", "a13", "memory");
+  return remaining;
+}
+
+// Bekannter Block (Höhe 125552) einmal beim Start durch genau diese Schleife: 67 Nonces, der letzte ist
+// der echte. Ergebnis in /info (hw_kat).
+static void nerd_classic_kat()
+{
+  static const uint8_t kat[80] = {  // Header wortweise byte-getauscht wie job.sha_buffer
+    0x00,0x00,0x00,0x01,0xab,0x02,0xcd,0x81,0x8b,0x9e,0x56,0x7e,0xe2,0x17,0x93,0xcd,
+    0xde,0xf2,0x99,0xfe,0xb2,0x9a,0xd4,0x44,0xa4,0x1b,0x85,0xb8,0x00,0x00,0x08,0xa3,
+    0x00,0x00,0x00,0x00,0xc2,0xb6,0x20,0xe3,0x75,0x8d,0xfc,0xff,0x8b,0xdb,0x23,0x04,
+    0xae,0x42,0xb9,0x1e,0x1e,0x95,0x0e,0x71,0xaf,0xf7,0x97,0xd7,0xb0,0x92,0x88,0xfc,
+    0x2b,0x12,0xfc,0xf1,0x4d,0xd7,0xf5,0xc7,0x1a,0x44,0xb9,0xf2,0x95,0x46,0xa1,0x42 };
+  static const uint32_t want[8] = {
+    0x1dbd981f,0xe6985776,0xb644b173,0xa4d0385d,0xdc1aa2a8,0x29688d1e,0x00000000,0x00000000 };
+  uint8_t hdr[80] __attribute__((aligned(4)));  // aus dem RAM wie im Betrieb (Flash wäre langsamer)
+  memcpy(hdr, kat, sizeof(hdr));
+  nerd_sha_nonce_run_asm(hdr, __builtin_bswap32(0x9546a100), 0x43);
+  uint32_t got[8];
+  nerd_sha_ll_read_digest(got);
+  hwKat = memcmp(got, want, sizeof(want)) == 0 ? 1 : 0;
+  Serial.printf("[MINER] HW-SHA Selbsttest (Block 125552): %s\n", hwKat ? "ok" : "FEHLER");
+}
+#endif
+
+#ifdef NERD_ASM_BENCH
+// Diagnose (/info hw_bench): CPU-Takte für einen Engine-Block, ein LOAD, 16 Lese- und 16 Schreibzugriffe
+// auf SHA_TEXT, jeweils das Minimum aus 32 Versuchen. Zeigt, wie nah die Schleife am Limit der Engine ist.
+static inline uint32_t nerd_ccount()
+{
+  uint32_t c;
+  __asm__ __volatile__("rsr.ccount %0" : "=r"(c) :: "memory");
+  return c;
+}
+static void nerd_sha_bench()
+{
+  volatile uint32_t* tb = (volatile uint32_t*)SHA_TEXT_BASE;
+  uint32_t blk = ~0u, load = ~0u, rd = ~0u, wr = ~0u, nonce = ~0u;
+  uint8_t hdr[80] __attribute__((aligned(4))) = {0};
+  for (int k = 0; k < 32; ++k)
+  {
+    for (int i = 0; i < 16; ++i) tb[i] = i;
+    __asm__ __volatile__("memw");
+    uint32_t t0 = nerd_ccount();
+    tb[0x90 / 4] = 1;
+    __asm__ __volatile__("memw");
+    while (tb[0x9C / 4]) {}
+    uint32_t t1 = nerd_ccount();
+    tb[0x98 / 4] = 1;
+    __asm__ __volatile__("memw");
+    while (tb[0x9C / 4]) {}
+    uint32_t t2 = nerd_ccount();
+    uint32_t sum = 0;
+    for (int i = 0; i < 16; ++i) sum += tb[8];
+    uint32_t t3 = nerd_ccount();
+    for (int i = 0; i < 16; ++i) tb[8] = sum;
+    __asm__ __volatile__("memw");
+    uint32_t t4 = nerd_ccount();
+    nerd_sha_nonce_run_asm(hdr, 0, 1);
+    uint32_t t5 = nerd_ccount();
+    blk = std::min(blk, t1 - t0);
+    load = std::min(load, t2 - t1);
+    rd = std::min(rd, t3 - t2);
+    wr = std::min(wr, t4 - t3);
+    nonce = std::min(nonce, t5 - t4);
+  }
+  snprintf(hwBench, sizeof(hwBench), "blk %u load %u rd16 %u wr16 %u nonce %u",
+           (unsigned)blk, (unsigned)load, (unsigned)rd, (unsigned)wr, (unsigned)nonce);
+  Serial.printf("[MINER] HW-SHA Takte: %s\n", hwBench);
+}
+#endif
+
 // Rechnet einen Hardware-Treffer in Software nach (ca. 6 pro Sekunde, kostet praktisch nichts).
 // job.sha_buffer ist wortweise byte-getauscht (für die Engine), job.midstate ist der Software-Midstate.
 static bool verifyHwHash(const JobRequest& job, uint32_t nonce, const uint8_t* hwHash)
@@ -1183,6 +1361,45 @@ void minerWorkerHw(void * task_id)
       uint8_t job_in_work = job.id & 0xFF;
 
       esp_sha_lock_engine(SHA2_256);
+#ifdef NERD_ASM_LOOP
+      if (hwKat < 0)
+      {
+        nerd_classic_kat();
+#ifdef NERD_ASM_BENCH
+        nerd_sha_bench();
+#endif
+      }
+      uint32_t n = 0;
+      while (n < job.nonce_count)
+      {
+        // Abschnitt endet spätestens an der nächsten 256er-Grenze des Nonce (siehe nerd_sha_nonce_run_asm)
+        const uint32_t base = job.nonce_start + n;
+        uint32_t chunk = 256 - (base & 0xFF);
+        if (chunk > job.nonce_count - n)
+          chunk = job.nonce_count - n;
+        n += chunk - nerd_sha_nonce_run_asm(sha_buffer, __builtin_bswap32(base), chunk);
+        if (nerd_sha_ll_read_digest_swap_if(hash))
+        {
+          const uint32_t nonce_hit = job.nonce_start + n - 1;
+          hwChecked++;
+          if (!verifyHwHash(job, nonce_hit, hash))
+            hwErrors++;
+          else
+          {
+            double diff_hash = diff_from_target(hash);
+            if (diff_hash > result.difficulty && isSha256Valid(hash))
+            {
+              result.difficulty = diff_hash;
+              result.nonce = nonce_hit;
+              memcpy(result.hash, hash, sizeof(hash));
+            }
+          }
+        }
+        if (s_working_current_job_id != job_in_work)
+          break;
+      }
+      result.nonce_count = n;
+#else
       for (uint32_t n = 0; n < job.nonce_count; ++n)
       {
         //((uint32_t*)(sha_buffer+64+12))[0] = __builtin_bswap32(job->nonce_start+n);
@@ -1235,9 +1452,13 @@ void minerWorkerHw(void * task_id)
           break;
         }
       }
+#endif
       esp_sha_unlock_engine(SHA2_256);
     } else
+    {
+      hwIdle++;
       vTaskDelay(2 / portTICK_PERIOD_MS);
+    }
 
     esp_task_wdt_reset();
   }

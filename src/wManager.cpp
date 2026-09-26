@@ -315,6 +315,27 @@ void init_WifiManager()
         wm.setCaptivePortalEnable(true); 
         wm.setConfigPortalBlocking(true);
         wm.setEnableConfigPortal(true);
+        // Gespeichertes WLAN erst selbst versuchen: nach einem Neustart (z. B. Update per WLAN) scheitern die
+        // Versuche von autoConnect manchmal kurz hintereinander. Der Einrichtungs-Hotspot blockiert dann 180 s,
+        // obwohl sich das Gerät im Hintergrund längst verbunden hat (WiFiManager 2.0.17 beendet ihn dabei
+        // nicht), danach Neustart - gut 4 min ohne Mining. Ist das WLAN hier schon verbunden, kehrt
+        // autoConnect sofort zurück; sonst geht es nach ~90 s weiter wie bisher.
+        if (wm.getWiFiIsSaved())
+        {
+            for (int attempt = 0; attempt < 6 && WiFi.status() != WL_CONNECTED; ++attempt)
+            {
+                WiFi.begin();
+                uint32_t start = millis();
+                while (WiFi.status() != WL_CONNECTED && millis() - start < 15000)
+                    delay(100);
+                if (WiFi.status() != WL_CONNECTED)
+                {
+                    Serial.printf("WLAN-Verbindung Versuch %d fehlgeschlagen (Status %d)\n", attempt + 1, (int)WiFi.status());
+                    WiFi.disconnect();
+                    delay(1000);
+                }
+            }
+        }
         // if (!wm.autoConnect(Settings.WifiSSID.c_str(), Settings.WifiPW.c_str()))
         if (!wm.autoConnect(apName, DEFAULT_WIFIPW))
         {

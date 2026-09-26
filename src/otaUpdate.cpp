@@ -36,6 +36,9 @@ extern uint32_t hashesSw;
 extern uint32_t lastDrawDurationMs;
 extern uint32_t hwChecked;
 extern uint32_t hwErrors;
+extern uint32_t hwIdle;
+extern int hwKat;
+extern char hwBench[];
 
 static WebServer s_server(80);
 static HTTPUpdateServer s_updater;
@@ -95,12 +98,12 @@ void otaBootGuard()
 static void handleInfo()
 {
   const esp_partition_t* running = esp_ota_get_running_partition();
-  char json[400];
+  char json[560];
   snprintf(json, sizeof(json),
            "{\"host\":\"%s\",\"version\":\"%s\",\"partition\":\"%s\",\"md5\":\"%s\",\"uptime_s\":%lu,\"khs\":%u,\"heap\":%u,"
-           "\"hw_hashes\":%u,\"sw_hashes\":%u,\"rssi\":%d,\"draw_ms\":%u,\"hw_checked\":%u,\"hw_errors\":%u,\"reset_reason\":%d}",
+           "\"hw_hashes\":%u,\"sw_hashes\":%u,\"rssi\":%d,\"draw_ms\":%u,\"hw_checked\":%u,\"hw_errors\":%u,\"hw_kat\":%d,\"hw_idle\":%u,\"hw_bench\":\"%s\",\"reset_reason\":%d}",
            s_host, OTA_VERSION, running ? running->label : "?", s_md5.c_str(),
-           (unsigned long)(millis() / 1000), elapsedKHs, ESP.getFreeHeap(), hashesHw, hashesSw, (int)WiFi.RSSI(), lastDrawDurationMs, hwChecked, hwErrors, s_resetReason);
+           (unsigned long)(millis() / 1000), elapsedKHs, ESP.getFreeHeap(), hashesHw, hashesSw, (int)WiFi.RSSI(), lastDrawDurationMs, hwChecked, hwErrors, hwKat, hwIdle, hwBench, s_resetReason);
   s_server.send(200, "application/json", json);
 }
 
