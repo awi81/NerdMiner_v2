@@ -25,6 +25,7 @@ Ursache der 4-Minuten-Ausfälle nach Updates behoben. Fortsetzung von `2026-09-2
 | Padding vorab, 40/48 nop | 791–793 | kein Effekt mehr → Engine-Limit |
 | SW-SHA -O2/-O3 | 784 | SW 38 → 30,5, verworfen |
 | SW-SHA zusätzlich im Flash | 738 | −1 %, verworfen |
+| Warten per Taktzähler statt BUSY-Poll | – | Block/LOAD 58/10 Takte korrekt (338 statt 347 Takte je Nonce), 52/8 alle Hashes falsch → ≤2,6 % ohne Marge, verworfen |
 
 Taktdiagnose (`-DNERD_ASM_BENCH`): Block 86, LOAD 30 Takte inkl. Poll → 3 × 86 + 2 × 30 = 318 Takte
 je Nonce = 754 KH/s HW bei 240 MHz, genau der gemessene Wert.
@@ -37,7 +38,7 @@ der Erwartung (1 von 65.536 Hashes), es gehen also keine Treffer verloren.
 1. **`awiEdition`** ist gepusht. Commit und Push darf ich laut User ohne Rückfrage.
 2. **PR #727**: Messdaten gepostet (issuecomment-5849968237), früheren DPORT-Kommentar korrigiert; Antworten von Gheop beobachten.
 3. **PRs #831–833**: noch ohne Review, konfliktfrei.
-4. **WLAN-Fix beobachten**: Nach dem nächsten Update prüfen, ob noch ein Gerät 4 min fehlt (`reset_reason` 3 mit kurzer Laufzeit).
+4. **WLAN-Fix beobachten**: Seit dem Fix ~16 Updates ohne Ausfall (vorher 2 Ausfälle). Weiter prüfen, ob noch ein Gerät 4 min fehlt (`reset_reason` 3 mit kurzer Laufzeit).
    Ursache war: WiFiManager 2.0.17 beendet den blockierenden Hotspot nicht, wenn sich das Gerät im Hintergrund verbindet.
 5. **Resthebel**: Der HW-Kern wartet ~75 % der Zeit auf die Engine; SW-Hashing in diese Wartezeit zu verschränken
    brächte grob +3 %, ist aber aufwendig (Assembler, Registerdruck, Risiko für die HW-Taktung).
