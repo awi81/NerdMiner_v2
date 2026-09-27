@@ -80,8 +80,22 @@ als Übergabe an die nächste Session.
   `/info` hat jetzt `wifi_disc` (Abbrüche seit Start) und `wifi_reason` (letzter Grund, 16 = Gruppenschlüssel).
   Logger (15-s-Abfrage, Zeitpunkt jedes Prüffehlers und WLAN-Abbruchs):
   `C:\Users\alwin\AppData\Local\Temp\claude\D--workspace-NerdMiner-v2\7bb61598-16a8-498d-89d4-1525f0e80580\scratchpad\err_log.txt`.
-- Auswertung am nächsten Morgen: Fehler/h und `wifi_disc` je Gerät, Abstände der Fehler im Log (20-min-Takt?).
-  Wenn B klar besser: Sperre ohne Schalter übernehmen, alle vier auf eine Firmware, #727-Antwort mit beidem.
+- **Umbau in der Nacht (00:29 / 01:04 / 01:50), Stand `efa51b6`:** `/info` zählt auch HTTPS-Abrufe
+  (`api_calls`, `api_last_s`). Ergebnis bis 01:30: B (SHA1) und C (SHA1+SHA512) haben weiter Prüffehler,
+  5 von 9 Fehlern liegen an einem HTTPS-Abruf (Pool-API alle 15 min), einige 80–110 s nach dem Start.
+  Vermutung: Errata CPU-3.16 (TLS nutzt AES/RSA-Hardware im selben Adressbereich 0x3FF0xxxx wie SHA_TEXT).
+  Aktuelle Belegung (Testschalter in `src/`):
+
+  | Gerät | Strom | Variante | seit |
+  |---|---|---|---|
+  | nerd3CF0 (links oben) | Verteiler | D = A + `-DNERD_NO_API` (keine HTTPS-Abrufe, Display zeigt „P / 0 / E“) | 01:04 |
+  | nerd46BC | Verteiler | E = A + `-DNERD_WIFI_NOSLEEP` | 01:50 |
+  | nerd7990 | Verteiler | A | 00:29 |
+  | nerdFBD4 | eigenes Netzteil | A | 00:29 |
+
+  Auswertung: `analyse.py` im Scratchpad (Fehler/h je Gerät seit Neustart, Anteil an HTTPS-Abrufen).
+- Danach: Sperren SHA1 + SHA512 fest einbauen (korrekt, da die Schleife SHA_TEXT ohne Sperre beschreibt; OTA mit
+  Sperren getestet), Testschalter NERD_NO_API entfernen, alle vier auf eine Firmware, #727-Antwort posten.
 - **Danach posten (User-Freigabe, erst wenn beides vorliegt):** eine Antwort auf #727 mit Padding-Ergebnis und
   Stromversorgung/Umstecktest. Entwurf:
 
