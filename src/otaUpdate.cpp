@@ -46,6 +46,8 @@ static bool s_running = false;
 static char s_host[16];
 static String s_md5;
 static int s_resetReason = 0;  // esp_reset_reason() beim Start (/info)
+static volatile uint32_t s_wifiDisc = 0;  // WLAN-Abbrüche seit dem Start (/info)
+static volatile int s_wifiReason = 0;     // Grund des letzten Abbruchs (wifi_err_reason_t, 16 = Gruppenschlüssel)
 
 // RTC-Speicher überlebt Neustarts durch Absturz/Watchdog (nicht aber einen Stromausfall)
 RTC_NOINIT_ATTR static uint32_t s_guardMagic;
@@ -98,12 +100,14 @@ void otaBootGuard()
 static void handleInfo()
 {
   const esp_partition_t* running = esp_ota_get_running_partition();
-  char json[560];
+  char json[640];
   snprintf(json, sizeof(json),
            "{\"host\":\"%s\",\"version\":\"%s\",\"partition\":\"%s\",\"md5\":\"%s\",\"uptime_s\":%lu,\"khs\":%u,\"heap\":%u,"
-           "\"hw_hashes\":%u,\"sw_hashes\":%u,\"rssi\":%d,\"draw_ms\":%u,\"hw_checked\":%u,\"hw_errors\":%u,\"hw_kat\":%d,\"hw_idle\":%u,\"hw_bench\":\"%s\",\"reset_reason\":%d}",
+           "\"hw_hashes\":%u,\"sw_hashes\":%u,\"rssi\":%d,\"draw_ms\":%u,\"hw_checked\":%u,\"hw_errors\":%u,\"hw_kat\":%d,\"hw_idle\":%u,\"hw_bench\":\"%s\",\"reset_reason\":%d,"
+           "\"wifi_disc\":%u,\"wifi_reason\":%d}",
            s_host, OTA_VERSION, running ? running->label : "?", s_md5.c_str(),
-           (unsigned long)(millis() / 1000), elapsedKHs, ESP.getFreeHeap(), hashesHw, hashesSw, (int)WiFi.RSSI(), lastDrawDurationMs, hwChecked, hwErrors, hwKat, hwIdle, hwBench, s_resetReason);
+           (unsigned long)(millis() / 1000), elapsedKHs, ESP.getFreeHeap(), hashesHw, hashesSw, (int)WiFi.RSSI(), lastDrawDurationMs, hwChecked, hwErrors, hwKat, hwIdle, hwBench, s_resetReason,
+           s_wifiDisc, s_wifiReason);
   s_server.send(200, "application/json", json);
 }
 
@@ -117,6 +121,10 @@ void otaSetup()
   // Gleicher Name wie der automatische Worker-Name beim Pool (mining.cpp)
   getDeviceName(s_host, sizeof(s_host));
   s_md5 = ESP.getSketchMD5();  // MD5 der laufenden Firmware, zum Abgleich mit der .bin-Datei
+  WiFi.onEvent([](WiFiEvent_t, WiFiEventInfo_t info) {
+    s_wifiDisc++;
+    s_wifiReason = info.wifi_sta_disconnected.reason;
+  }, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
 
 #ifndef OTA_NO_MDNS
   if (MDNS.begin(s_host))

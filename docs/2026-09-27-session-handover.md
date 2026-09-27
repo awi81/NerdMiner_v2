@@ -62,8 +62,26 @@ als Übergabe an die nächste Session.
   | nerd7990 | 78709 | 906785 | 58 |
   | nerdFBD4 | 40 | 359 | 0 |
 
-- Auswertung frühestens nach 4 h, besser am nächsten Morgen: Fehler je Stunde und je `hw_checked` seit 23:10 vergleichen.
-  Nebeneffekt beachten: der Verteiler ist jetzt mit drei statt vier Geräten belastet.
+- **Ab 23:55 kombiniert mit dem SHA1-Test (Entscheidung des Users), Startwerte oben damit überholt.**
+  Fund aus der Fork-Suche: PR #826 (Hasenpriester, getestet auf ESP32_2432S028_2USB). SHA1 und SHA256 teilen
+  sich SHA_TEXT; der WPA2-Gruppenschlüsselwechsel (mbedTLS-SHA1 in Hardware) kollidiert mit dem HW-Miner →
+  WLAN-Abbruch Grund 16 alle 20 min (Fritz!Box), vermutlich auch unsere Prüffehler (~3/h ≈ alle 20 min).
+  Fix: `esp_sha_lock_engine(SHA1)` beim Start von `minerWorkerHw` → mbedTLS rechnet SHA1 in Software.
+  Alle vier zwischen 23:54 und 23:57 neu gestartet, Zähler ab Start:
+
+  | Gerät | Strom | Firmware | MD5 |
+  |---|---|---|---|
+  | nerd3CF0 | Verteiler | B = A + `-DNERD_SHA1_LOCK` | `cb4d175b…` |
+  | nerd46BC | Verteiler | B | `cb4d175b…` |
+  | nerd7990 | Verteiler | A = `d7b17e0` + WLAN-Abbruchzähler | `b8bd8d4b…` |
+  | nerdFBD4 | eigenes Netzteil | A | `b8bd8d4b…` |
+
+  SHA1-Effekt: 3CF0/46BC gegen 7990. Netzteil-Effekt: FBD4 gegen 7990.
+  `/info` hat jetzt `wifi_disc` (Abbrüche seit Start) und `wifi_reason` (letzter Grund, 16 = Gruppenschlüssel).
+  Logger (15-s-Abfrage, Zeitpunkt jedes Prüffehlers und WLAN-Abbruchs):
+  `C:\Users\alwin\AppData\Local\Temp\claude\D--workspace-NerdMiner-v2\7bb61598-16a8-498d-89d4-1525f0e80580\scratchpad\err_log.txt`.
+- Auswertung am nächsten Morgen: Fehler/h und `wifi_disc` je Gerät, Abstände der Fehler im Log (20-min-Takt?).
+  Wenn B klar besser: Sperre ohne Schalter übernehmen, alle vier auf eine Firmware, #727-Antwort mit beidem.
 - **Danach posten (User-Freigabe, erst wenn beides vorliegt):** eine Antwort auf #727 mit Padding-Ergebnis und
   Stromversorgung/Umstecktest. Entwurf:
 
