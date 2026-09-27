@@ -37,6 +37,7 @@ der Erwartung (1 von 65.536 Hashes), es gehen also keine Treffer verloren.
 
 1. **`awiEdition`** ist gepusht. Commit und Push darf ich laut User ohne Rückfrage.
 2. **PR #727**: Messdaten gepostet (issuecomment-5849968237), früheren DPORT-Kommentar korrigiert; Antworten von Gheop beobachten.
+   ↪ Gheop hat am 2026-09-27 geantwortet (Stromversorgung? Padding während Block 2 bei ihm +2,2 %), siehe `2026-09-27-session-handover.md`.
 3. **PRs #831–833**: noch ohne Review, konfliktfrei.
 4. **WLAN-Fix beobachten**: Seit dem Fix ~16 Updates ohne Ausfall (vorher 2 Ausfälle). Weiter prüfen, ob noch ein Gerät 4 min fehlt (`reset_reason` 3 mit kurzer Laufzeit).
    Ursache war: WiFiManager 2.0.17 beendet den blockierenden Hotspot nicht, wenn sich das Gerät im Hintergrund verbindet.
