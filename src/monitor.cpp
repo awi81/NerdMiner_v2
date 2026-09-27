@@ -37,6 +37,17 @@ global_data gData;
 pool_data pData;
 String poolAPIUrl;
 
+// HTTPS-Abrufe zählen (/info): TLS rechnet SHA in Hardware und teilt sich SHA_TEXT mit dem HW-Miner
+uint32_t apiCalls = 0;
+uint32_t apiLastMs = 0;  // millis() am Ende des letzten Abrufs
+static int apiGet(HTTPClient& http)
+{
+  apiCalls++;
+  int code = http.GET();
+  apiLastMs = millis();
+  return code;
+}
+
 
 void setup_monitor(void){
     /******** TIME ZONE SETTING *****/
@@ -78,7 +89,7 @@ void updateGlobalData(void){
         http.setTimeout(10000);
         try {
         http.begin(getGlobalHash);
-        int httpCode = http.GET();
+        int httpCode = apiGet(http);
 
         if (httpCode == HTTP_CODE_OK) {
             String payload = http.getString();
@@ -103,7 +114,7 @@ void updateGlobalData(void){
       
         //Make third API call to get fees
         http.begin(getFees);
-        httpCode = http.GET();
+        httpCode = apiGet(http);
 
         if (httpCode == HTTP_CODE_OK) {
             String payload = http.getString();
@@ -145,7 +156,7 @@ String getBlockHeight(void){
         http.setTimeout(10000);
         try {
         http.begin(getHeightAPI);
-        int httpCode = http.GET();
+        int httpCode = apiGet(http);
 
         if (httpCode == HTTP_CODE_OK) {
             String payload = http.getString();
@@ -184,7 +195,7 @@ String getBTCprice(void){
 
         try {
         http.begin(getBTCAPI);
-        int httpCode = http.GET();
+        int httpCode = apiGet(http);
 
         if (httpCode == HTTP_CODE_OK) {
             String payload = http.getString();
@@ -470,7 +481,7 @@ pool_data getPoolData(void){
 #else
           http.begin(String(getPublicPool)+btcWallet);
 #endif
-          int httpCode = http.GET();
+          int httpCode = apiGet(http);
           if (httpCode == HTTP_CODE_OK) {
               String payload = http.getString();
               // Serial.println(payload);

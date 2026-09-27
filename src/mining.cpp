@@ -1353,6 +1353,10 @@ void minerWorkerHw(void * task_id)
   // (Hasenpriester, BitMaker-hub/NerdMiner_v2#826).
   esp_sha_lock_engine(SHA1);
 #endif
+#ifdef NERD_SHA512_LOCK
+  // Dasselbe für SHA384/512 (eine gemeinsame Engine-Sperre, nur einmal belegen): TLS der HTTPS-Abrufe
+  esp_sha_lock_engine(SHA2_512);
+#endif
 
   // Job wird aus der Queue kopiert, der Task arbeitet direkt auf seiner Kopie
   JobRequest job;
