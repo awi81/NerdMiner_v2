@@ -12,3 +12,6 @@ boards/ESP32_wroom_guide.md
 # Lokales Passwort für das Update per WLAN
 ota_secret*.ini
 __pycache__/
+
+# Build-Ausgabe von post_build_merge.py
+firmware/
