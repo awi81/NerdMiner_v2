@@ -374,6 +374,9 @@ void init_WifiManager()
         Serial.println("WiFi connected");
         Serial.print("IP address: ");
         Serial.println(WiFi.localIP());
+#ifdef NERD_WIFI_NOSLEEP
+        WiFi.setSleep(false);  // Testschalter: Modem-Stromsparen aus (Gheop 1aff635)
+#endif
 
 
         // Lets deal with the user config values
@@ -480,6 +483,9 @@ void wifiManagerProcess() {
     if (newStatus != oldStatus) {
         if (newStatus == WL_CONNECTED) {
             Serial.println("CONNECTED - Current ip: " + WiFi.localIP().toString());
+#ifdef NERD_WIFI_NOSLEEP
+            WiFi.setSleep(false);
+#endif
         } else {
             Serial.print("[Error] - current status: ");
             Serial.println(newStatus);
