@@ -80,7 +80,7 @@ als Übergabe an die nächste Session.
   `/info` hat jetzt `wifi_disc` (Abbrüche seit Start) und `wifi_reason` (letzter Grund, 16 = Gruppenschlüssel).
   Logger (15-s-Abfrage, Zeitpunkt jedes Prüffehlers und WLAN-Abbruchs):
   `C:\Users\alwin\AppData\Local\Temp\claude\D--workspace-NerdMiner-v2\7bb61598-16a8-498d-89d4-1525f0e80580\scratchpad\err_log.txt`.
-- **Umbau in der Nacht (00:29 / 01:04 / 01:50), Stand `efa51b6`:** `/info` zählt auch HTTPS-Abrufe
+- **Umbau in der Nacht (00:29 / 01:02 / 01:33), Stand `efa51b6`:** `/info` zählt auch HTTPS-Abrufe
   (`api_calls`, `api_last_s`). Ergebnis bis 01:30: B (SHA1) und C (SHA1+SHA512) haben weiter Prüffehler,
   5 von 9 Fehlern liegen an einem HTTPS-Abruf (Pool-API alle 15 min), einige 80–110 s nach dem Start.
   Vermutung: Errata CPU-3.16 (TLS nutzt AES/RSA-Hardware im selben Adressbereich 0x3FF0xxxx wie SHA_TEXT).
@@ -88,8 +88,8 @@ als Übergabe an die nächste Session.
 
   | Gerät | Strom | Variante | seit |
   |---|---|---|---|
-  | nerd3CF0 (links oben) | Verteiler | D = A + `-DNERD_NO_API` (keine HTTPS-Abrufe, Display zeigt „P / 0 / E“) | 01:04 |
-  | nerd46BC | Verteiler | E = A + `-DNERD_WIFI_NOSLEEP` | 01:50 |
+  | nerd3CF0 (links oben) | Verteiler | D = A + `-DNERD_NO_API` (keine HTTPS-Abrufe, Display zeigt „P / 0 / E“) | 01:02 |
+  | nerd46BC | Verteiler | E = A + `-DNERD_WIFI_NOSLEEP` | 01:33 |
   | nerd7990 | Verteiler | A | 00:29 |
   | nerdFBD4 | eigenes Netzteil | A | 00:29 |
 
