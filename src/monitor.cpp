@@ -42,9 +42,6 @@ uint32_t apiCalls = 0;
 uint32_t apiLastMs = 0;  // millis() am Ende des letzten Abrufs
 static int apiGet(HTTPClient& http)
 {
-#ifdef NERD_NO_API
-  return HTTPC_ERROR_CONNECTION_REFUSED;  // Testschalter: keine HTTPS-Abrufe
-#endif
   apiCalls++;
   int code = http.GET();
   apiLastMs = millis();

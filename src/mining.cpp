@@ -1346,17 +1346,13 @@ void minerWorkerHw(void * task_id)
   unsigned int miner_id = (uint32_t)task_id;
   Serial.printf("[MINER] %d Started minerWorkerHwEsp32D Task!\n", miner_id);
 
-#ifdef NERD_SHA1_LOCK
-  // SHA1 und SHA256 haben getrennte Engine-Sperren, teilen sich aber SHA_TEXT. Die Schleife schreibt
-  // dort ohne Sperre des Speicherblocks; ein SHA1 in Hardware (WPA2-Schlüsselwechsel über mbedTLS)
-  // würde es verfälschen. Mit dauerhaft belegter SHA1-Engine rechnet mbedTLS SHA1 in Software
-  // (Hasenpriester, BitMaker-hub/NerdMiner_v2#826).
+  // SHA1, SHA256 und SHA384/512 haben getrennte Engine-Sperren, teilen sich aber SHA_TEXT. Die Schleife
+  // schreibt dort ohne Sperre des Speicherblocks; ein SHA1 (WPA2-Schlüsselwechsel) oder SHA384/512 (TLS)
+  // in Hardware würde beide Rechnungen verfälschen. Mit dauerhaft belegten Engines rechnet mbedTLS diese
+  // in Software (SHA1: Hasenpriester, BitMaker-hub/NerdMiner_v2#826). SHA384 und SHA512 teilen sich eine
+  // Sperre, daher nur einmal belegen. Auf die seltenen Prüffehler hatte das keinen messbaren Einfluss.
   esp_sha_lock_engine(SHA1);
-#endif
-#ifdef NERD_SHA512_LOCK
-  // Dasselbe für SHA384/512 (eine gemeinsame Engine-Sperre, nur einmal belegen): TLS der HTTPS-Abrufe
   esp_sha_lock_engine(SHA2_512);
-#endif
 
   // Job wird aus der Queue kopiert, der Task arbeitet direkt auf seiner Kopie
   JobRequest job;
