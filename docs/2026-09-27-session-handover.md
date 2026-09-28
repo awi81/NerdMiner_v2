@@ -74,8 +74,25 @@ Um die Kontrolldrift bereinigt +0,4 % bzw. ±0 → kein Gewinn auf beiden Gerät
 
 ## Offene Punkte
 
-1. **Upstream-PRs #831–833:** weiter ohne Review (Stand 2026-09-28), konfliktfrei. Zu Beginn der nächsten Session prüfen.
-2. **#727:** auf Gheops Antwort zum Kommentar vom 2026-09-28 achten.
+0. **Test läuft seit 2026-09-28 20:50 — HW-Pause während HTTPS (Vorschlag Gheop, #727 04:32 UTC).**
+   Gheop: seine Boards ohne Display und ohne HTTPS haben 0,3–1,0 Prüffehler/h; Rate folge der Buslast des anderen
+   Kerns, TLS größter Anteil. Zum Padding: sein Loop hatte `memw` direkt nach START, bei uns war das wohl schon verdeckt.
+   Umsetzung: Schalter `-DNERD_HW_PAUSE_API` (HW-Miner bricht den Job ab und wartet, von `apiGet` bis `apiBody`, max. 30 s),
+   `/info` `hw_pause_ms`. Kosten gemessen: 2,3–2,8 s je Abruf ≈ 0,3 % HW-Zeit.
+
+   | Gerät | Variante | Vorher-Rate (15,7 h auf `d62209e`) |
+   |---|---|---|
+   | nerd3CF0 | Pause (MD5 `47c6d424…`) | 2,5/h |
+   | nerd46BC | Pause | 2,4/h |
+   | nerd7990 | `d62209e` unverändert, Startwerte 20:47: uptime 56610, err 49 | 3,1/h |
+   | nerdFBD4 | `d62209e` unverändert, Startwerte 20:47: uptime 56584, err 46 | 2,9/h |
+
+   Logger läuft wieder (`err_log.txt` im Scratchpad dieser Session, `analyse.py`). Auswertung nach ≥ 8 h:
+   Fehler/h der Pause-Geräte gegen ihre Vorher-Rate und gegen die Vergleichsgeräte im selben Zeitraum; erwartet bei
+   TLS als Ursache: ~1,2–1,8/h und keine Fehler mehr um die Abrufe. Danach Entscheidung (0,3 % Kosten gegen harmlose
+   Prüffehler → vermutlich nicht übernehmen) und kurze Antwort an Gheop.
+1. **Upstream-PRs #831–833:** weiter ohne Review (Stand 2026-09-28 20:43), konfliktfrei.
+2. **#727:** Gheop hat geantwortet (siehe Punkt 0); Antwort nach dem Pausentest.
 3. **WLAN-Fix beobachten:** seit dem Fix ~25 Updates ohne Ausfall; Ausfall meldet `tools/ota_upload.py` als
    `FEHLER - nach dem Neustart nicht die neue Firmware`, dann `reset_reason` in `/info` prüfen.
 4. Optional: `checkError()` per Referenz; Prüffehler-Grundrauschen 80–110 s nach dem Start (Ursache offen, harmlos).

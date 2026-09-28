@@ -37,15 +37,37 @@ global_data gData;
 pool_data pData;
 String poolAPIUrl;
 
-// HTTPS-Abrufe zählen (/info): TLS rechnet SHA in Hardware und teilt sich SHA_TEXT mit dem HW-Miner
+// HTTPS-Abrufe zählen (/info): um die Abrufe herum häufen sich die Prüffehler des HW-Miners
 uint32_t apiCalls = 0;
 uint32_t apiLastMs = 0;  // millis() am Ende des letzten Abrufs
+#ifdef NERD_HW_PAUSE_API
+// Test (Vorschlag Gheop, #727): HW-Miner hält während des ganzen Abrufs an (GET bis Antwort gelesen)
+extern volatile bool hwPauseRequest;
+extern volatile bool hwPaused;
+#endif
 static int apiGet(HTTPClient& http)
 {
   apiCalls++;
+#ifdef NERD_HW_PAUSE_API
+  hwPauseRequest = true;
+  for (int i = 0; i < 50 && !hwPaused; i++)  // höchstens ~50 ms, bis der HW-Miner steht
+    vTaskDelay(1);
+#endif
   int code = http.GET();
   apiLastMs = millis();
+#ifdef NERD_HW_PAUSE_API
+  if (code != HTTP_CODE_OK)  // bei OK liest apiBody() noch die Antwort
+    hwPauseRequest = false;
+#endif
   return code;
+}
+static String apiBody(HTTPClient& http)
+{
+  String payload = http.getString();
+#ifdef NERD_HW_PAUSE_API
+  hwPauseRequest = false;
+#endif
+  return payload;
 }
 
 
@@ -92,7 +114,7 @@ void updateGlobalData(void){
         int httpCode = apiGet(http);
 
         if (httpCode == HTTP_CODE_OK) {
-            String payload = http.getString();
+            String payload = apiBody(http);
             
             StaticJsonDocument<1024> doc;
             deserializeJson(doc, payload);
@@ -117,7 +139,7 @@ void updateGlobalData(void){
         httpCode = apiGet(http);
 
         if (httpCode == HTTP_CODE_OK) {
-            String payload = http.getString();
+            String payload = apiBody(http);
             
             StaticJsonDocument<1024> doc;
             deserializeJson(doc, payload);
@@ -159,7 +181,7 @@ String getBlockHeight(void){
         int httpCode = apiGet(http);
 
         if (httpCode == HTTP_CODE_OK) {
-            String payload = http.getString();
+            String payload = apiBody(http);
             payload.trim();
 
             current_block = payload;
@@ -198,7 +220,7 @@ String getBTCprice(void){
         int httpCode = apiGet(http);
 
         if (httpCode == HTTP_CODE_OK) {
-            String payload = http.getString();
+            String payload = apiBody(http);
 
             StaticJsonDocument<1024> doc;
             deserializeJson(doc, payload);
@@ -483,7 +505,7 @@ pool_data getPoolData(void){
 #endif
           int httpCode = apiGet(http);
           if (httpCode == HTTP_CODE_OK) {
-              String payload = http.getString();
+              String payload = apiBody(http);
               // Serial.println(payload);
               StaticJsonDocument<300> filter;
               filter["bestDifficulty"] = true;

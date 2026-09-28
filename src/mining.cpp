@@ -56,6 +56,10 @@ uint32_t hwChecked = 0;
 uint32_t hwErrors = 0;
 // Wie oft der HW-Miner ohne Job 2 ms warten musste (/info)
 uint32_t hwIdle = 0;
+// Pause des HW-Miners während HTTPS-Abrufen (Test -DNERD_HW_PAUSE_API, monitor.cpp) und deren Summe in ms (/info)
+volatile bool hwPauseRequest = false;
+volatile bool hwPaused = false;
+uint32_t hwPauseMs = 0;
 // Selbsttest der HW-Schleife beim Start (1 = ok, 0 = falsch, -1 = nicht gelaufen) und Taktdiagnose (/info)
 int hwKat = -1;
 char hwBench[64] = "";
@@ -1420,6 +1424,10 @@ void minerWorkerHw(void * task_id)
         }
         if (s_working_current_job_id != job_in_work)
           break;
+#ifdef NERD_HW_PAUSE_API
+        if (hwPauseRequest)
+          break;
+#endif
       }
       result.nonce_count = n;
 #else
@@ -1483,6 +1491,21 @@ void minerWorkerHw(void * task_id)
       vTaskDelay(2 / portTICK_PERIOD_MS);
     }
 
+#ifdef NERD_HW_PAUSE_API
+    if (hwPauseRequest)
+    {
+      // SHA2_256 ist schon freigegeben; höchstens 30 s warten, falls die Freigabe ausbleibt
+      const uint32_t t0 = millis();
+      hwPaused = true;
+      while (hwPauseRequest && millis() - t0 < 30000)
+      {
+        esp_task_wdt_reset();
+        vTaskDelay(1);
+      }
+      hwPaused = false;
+      hwPauseMs += millis() - t0;
+    }
+#endif
     esp_task_wdt_reset();
   }
 }
