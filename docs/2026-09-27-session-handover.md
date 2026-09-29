@@ -1,16 +1,19 @@
-# Session-Handover 2026-09-27/28
+# Session-Handover 2026-09-27 bis 29
 
 Stichworte: Gheops Padding-Schritt nachgetestet (kein Gewinn), sieben Fixes aus Gheops all-fixes übernommen,
-Fork-Suche, Nachttest zu den Prüffehlern (Netzteil, SHA-Sperren, HTTPS, Modem-Sleep), Antwort auf #727.
+Fork-Suche, zwei Nachttests zu den Prüffehlern (Netzteil, SHA-Sperren, HTTPS, Modem-Sleep, HW-Pause), zwei Antworten auf #727.
 Vorgänger: `2026-09-26-session-handover-abend.md` (Hashrate 467 → 792 KH/s, Messdetails).
 
 ---
 
 ## Ausgangslage für die nächste Session
 
-- Branch `awiEdition` auf `d62209e` (+ dieser Doku-Commit), gepusht nach `origin`. `upstream/main` unverändert `e3a04b7`.
-- Alle vier CYDs auf `d62209e` (Version `-1.6.3-361-gd62209e`, MD5 `da34024f…`), seit 2026-09-28 ~05:05.
-  Kontrollmessung 5 min: 789–791 KH/s je Gerät (HW 751–753), Summe 3160 KH/s, Selbsttest ok.
+- Branch `awiEdition` auf `cf81a51` (+ dieser Doku-Commit), gepusht nach `origin`. `upstream/main` unverändert `e3a04b7`.
+  `src/` von `cf81a51` ist identisch mit `d62209e`.
+- Alle vier CYDs auf `cf81a51` (Version `-1.6.3-364-gcf81a51`, MD5 `0c61c0c3…`), seit 2026-09-29 ~07:20.
+  Kontrollmessung 5 min: 791–793 KH/s je Gerät (HW 753–754), Summe 3165,5 KH/s, Selbsttest ok.
+  Davor lief `d62209e` 26 h ohne Neustart und ohne WLAN-Abbruch.
+- Kein Logger und kein Test läuft mehr.
 - Stromversorgung: alle vier an einem Netzteil über ein 1-auf-4-USB-C-Kabel, nur **nerdFBD4** hängt seit
   2026-09-27 23:10 an einem eigenen Netzteil (vom User umgesteckt; kann so bleiben oder zurück, macht keinen Unterschied).
 - Position im Rahmen: nerd3CF0 = links oben (übrige unbekannt).
@@ -27,6 +30,8 @@ Vorgänger: `2026-09-26-session-handover-abend.md` (Hashrate 467 → 792 KH/s, M
 | `d62209e` | HW-Miner sperrt SHA1- und SHA384/512-Engine dauerhaft (mbedTLS rechnet diese dann in Software); Testschalter entfernt |
 | `70e5ded` | `firmware/` (Build-Ausgabe von `post_build_merge.py`) in `.gitignore` |
 | [#727 Kommentar](https://github.com/BitMaker-hub/NerdMiner_v2/pull/727#issuecomment-5862577511) | Padding-Nachtest, Stromversorgung, Zeitpunkte der Prüffehler |
+| `e58749f`, `cf81a51` | HW-Pause während HTTPS als Test (Vorschlag Gheop) und wieder entfernt, Ergebnis siehe unten |
+| [#727 Kommentar](https://github.com/BitMaker-hub/NerdMiner_v2/pull/727#issuecomment-5884180667) | Ergebnis des Pausentests |
 
 ### Padding-Nachtest (Gheop `84a54f7`, TEXT[8]/[15] während Block 2 nach 48 nop) — nicht übernommen
 
@@ -58,10 +63,25 @@ Um die Kontrolldrift bereinigt +0,4 % bzw. ±0 → kein Gewinn auf beiden Gerät
   Speicherblock-Sperre beschreibt und PR #826 (Hasenpriester, gleiches Board) WLAN-Abbrüche dadurch belegt.
   Laut ESP-IDF 4.4.6 (`sha/parallel_engine/sha.c`): drei Engine-Semaphoren SHA1 / SHA256 / SHA384+512, alle über SHA_TEXT.
 - **Modem-Sleep aus:** ohne Effekt, und kein einziger WLAN-Abbruch in ~16 Geräte-Stunden → nicht übernommen.
-- **Vermutung (ungetestet):** Errata CPU-3.16 — TLS nutzt auf dem anderen Kern die AES/RSA-Hardware (0x3FF01000/0x3FF02000)
-  direkt neben SHA_TEXT (0x3FF03000). Gheop: MEMW vor START und SW-Miner aus helfen nicht.
+- **Mechanismus (Vermutung):** Errata CPU-3.16 — TLS nutzt auf dem anderen Kern die AES/RSA-Hardware (0x3FF01000/0x3FF02000)
+  direkt neben SHA_TEXT (0x3FF03000). Gheop: MEMW vor START und SW-Miner aus helfen nicht; seine Boards ohne Display
+  und ohne HTTPS liegen bei 0,3–1,0/h → Rate folgt der Buslast des anderen Kerns (TLS am stärksten, Display-SPI u. a.).
 - **Bewertung:** harmlos. Falsche Kandidaten werden per Software verworfen; der Verlust liegt bei ~0,01 % der Hashes.
-  HW-Miner während HTTPS pausieren würde mehr kosten als bringen → nicht gemacht.
+
+### Pausentest (Vorschlag Gheop), 2026-09-28 20:47 bis 29 07:13, je 10,4 h — nicht übernommen
+
+HW-Miner hält von `http.GET()` bis zum Lesen der Antwort an (Schalter `NERD_HW_PAUSE_API`, `e58749f`, wieder entfernt in `cf81a51`).
+
+| Gerät | Pause | Fehler/h | vorher | um HTTPS-Abruf |
+|---|---|---|---|---|
+| nerd3CF0 | ja | 1,7 | 2,5 | 2 von 18 |
+| nerd46BC | ja | 2,0 | 2,4 | 1 von 21 |
+| nerd7990 | nein | 1,9 | 3,1 | 7 von 20 |
+| nerdFBD4 | nein | 3,5 | 2,9 | 12 von 37 |
+
+- Mit Pause nur noch Zufallsniveau um die Abrufe (3 von 39 ≈ 8 %), ohne 19 von 57 → **TLS als Ursache dieses Anteils bestätigt**.
+  Rest ~1,8/h Grundrauschen.
+- Kosten: 2,7 s je Abruf, 0,30 % HW-Zeit (`hw_pause_ms` 114 s bzw. 111 s in 10,4 h) → mehr als die harmlosen Prüffehler kosten.
 
 ### Fork-Suche (628 Forks, 57 seit März aktiv)
 
@@ -74,25 +94,8 @@ Um die Kontrolldrift bereinigt +0,4 % bzw. ±0 → kein Gewinn auf beiden Gerät
 
 ## Offene Punkte
 
-0. **Test läuft seit 2026-09-28 20:50 — HW-Pause während HTTPS (Vorschlag Gheop, #727 04:32 UTC).**
-   Gheop: seine Boards ohne Display und ohne HTTPS haben 0,3–1,0 Prüffehler/h; Rate folge der Buslast des anderen
-   Kerns, TLS größter Anteil. Zum Padding: sein Loop hatte `memw` direkt nach START, bei uns war das wohl schon verdeckt.
-   Umsetzung: Schalter `-DNERD_HW_PAUSE_API` (HW-Miner bricht den Job ab und wartet, von `apiGet` bis `apiBody`, max. 30 s),
-   `/info` `hw_pause_ms`. Kosten gemessen: 2,3–2,8 s je Abruf ≈ 0,3 % HW-Zeit.
-
-   | Gerät | Variante | Vorher-Rate (15,7 h auf `d62209e`) |
-   |---|---|---|
-   | nerd3CF0 | Pause (MD5 `47c6d424…`) | 2,5/h |
-   | nerd46BC | Pause | 2,4/h |
-   | nerd7990 | `d62209e` unverändert, Startwerte 20:47: uptime 56610, err 49 | 3,1/h |
-   | nerdFBD4 | `d62209e` unverändert, Startwerte 20:47: uptime 56584, err 46 | 2,9/h |
-
-   Logger läuft wieder (`err_log.txt` im Scratchpad dieser Session, `analyse.py`). Auswertung nach ≥ 8 h:
-   Fehler/h der Pause-Geräte gegen ihre Vorher-Rate und gegen die Vergleichsgeräte im selben Zeitraum; erwartet bei
-   TLS als Ursache: ~1,2–1,8/h und keine Fehler mehr um die Abrufe. Danach Entscheidung (0,3 % Kosten gegen harmlose
-   Prüffehler → vermutlich nicht übernehmen) und kurze Antwort an Gheop.
-1. **Upstream-PRs #831–833:** weiter ohne Review (Stand 2026-09-28 20:43), konfliktfrei.
-2. **#727:** Gheop hat geantwortet (siehe Punkt 0); Antwort nach dem Pausentest.
+1. **Upstream-PRs #831–833:** weiter ohne Review (Stand 2026-09-29 07:20), konfliktfrei.
+2. **#727:** auf Gheops Reaktion zum Pausentest-Kommentar vom 2026-09-29 achten. Nichts mehr zugesagt.
 3. **WLAN-Fix beobachten:** seit dem Fix ~25 Updates ohne Ausfall; Ausfall meldet `tools/ota_upload.py` als
    `FEHLER - nach dem Neustart nicht die neue Firmware`, dann `reset_reason` in `/info` prüfen.
 4. Optional: `checkError()` per Referenz; Prüffehler-Grundrauschen 80–110 s nach dem Start (Ursache offen, harmlos).
@@ -115,4 +118,4 @@ Um die Kontrolldrift bereinigt +0,4 % bzw. ±0 → kein Gewinn auf beiden Gerät
 ## Aktionen in der neuen Session — Empfehlung
 
 1. `gh pr view 727|831|832|833 -R BitMaker-hub/NerdMiner_v2` auf Antworten/Reviews prüfen.
-2. Kurz `tools/ota_upload.py --list`: alle vier auf `-361-gd62209e`, Laufzeit ohne Neustart?
+2. Kurz `tools/ota_upload.py --list`: alle vier auf `-364-gcf81a51`, Laufzeit ohne Neustart?
