@@ -10,11 +10,15 @@ Diese Datei dient als Übergabe an die nächste Session.
 ## Ausgangslage
 
 - Branch `awiEdition` auf `5b2c5b1` + Doku-Commit dieses Handovers, gepusht nach `origin`. `upstream/main` unverändert `e3a04b7`.
-- Alle vier CYDs (nerd3CF0 links oben, nerd46BC, nerd7990, nerdFBD4) auf `7d2ee8a` (`-1.6.3-367-g7d2ee8a`), seit 2026-09-29 ~20:50.
-  5-min-Kontrolle: 790–791 KH/s je Gerät, Summe 3162,8 KH/s, Selbsttest ok. Vorher lief `cf81a51` 13,4 h ohne Neustart.
-  Einzige `src/`-Änderung seitdem: `checkError()` per Referenz.
+- Alle vier CYDs (nerd3CF0 links oben, nerd46BC, nerd7990, nerdFBD4) auf `5c44b2a` (`-1.6.3-369-g5c44b2a`), seit 2026-09-30 ~00:18.
+  5-min-Kontrolle: 789–791 KH/s je Gerät, Summe 3160,0 KH/s, Selbsttest ok. Vorher lief `cf81a51` 13,4 h ohne Neustart.
+  `src/`-Änderungen seitdem: `checkError()` per Referenz, TCP-Keepalive auf den Pool-Socket.
+- WLAN seit dem Update schwächer: nerd46BC -83, nerd7990 -82, nerdFBD4 -58 dBm (am 2026-09-29 20:50 noch -64/-49/-44),
+  nerd3CF0 unverändert -61. Ursache unklar (anderer Zugangspunkt? Nachtbetrieb der Fritz!Box?).
 - Strom: drei Geräte am gemeinsamen Netzteil (1-auf-4-USB-C-Kabel), nerdFBD4 an eigenem Netzteil (egal, kein Unterschied gemessen).
-- Kein Test, kein Logger, kein Zeitplan läuft. PR-Worktree liegt jetzt unter `D:\workspace_temp\NerdMiner_v2\pr-worktree`.
+- Logger läuft seit 2026-09-30 00:23 (PID 29700, losgelöst): `D:\workspace_temp\NerdMiner_v2\poollog\poollog.py`, fragt alle 20 s `/info` ab
+  und schreibt Pool-Neuverbindungen, WLAN-Abbrüche, Neustarte und stündlich den Stand nach `poollog.txt`. Nach der Auswertung beenden.
+  Sonst kein Test und kein Zeitplan. PR-Worktree liegt jetzt unter `D:\workspace_temp\NerdMiner_v2\pr-worktree`.
 
 ---
 
@@ -27,6 +31,7 @@ Diese Datei dient als Übergabe an die nächste Session.
 | `d62209e` | `src/mining.cpp` | HW-Miner sperrt SHA1- und SHA384/512-Engine dauerhaft (PR #826 erweitert); Korrektheit, kein messbarer Effekt |
 | `e58749f` → `cf81a51` | `src/` | HW-Pause während HTTPS getestet und wieder entfernt |
 | `7d2ee8a` | `src/stratum.cpp`, `stratum.h` | `checkError()` nimmt das JSON-Dokument per Referenz (vorher 4-KB-Kopie auf den Stack) |
+| `5c44b2a` | `src/mining.cpp`, `otaUpdate.cpp` | TCP-Keepalive auf den Pool-Socket (10 s ruhig, dann alle 5 s, nach 3 ohne Antwort weg → tote Verbindung nach ≤ 25 s erkannt); `/info`: `pool_conn` (Verbindungen seit Start), `pool_gap_s` (beim letzten Abbruch: Sekunden seit den letzten Pool-Daten). Per Test-Build geprüft: Socket meldet `idle 10 intvl 5 cnt 3` |
 | `70e5ded` | `.gitignore` | `firmware/` (Build-Ausgabe) ignoriert |
 | [#727 (1)](https://github.com/BitMaker-hub/NerdMiner_v2/pull/727#issuecomment-5862577511), [#727 (2)](https://github.com/BitMaker-hub/NerdMiner_v2/pull/727#issuecomment-5884180667) | Upstream | Padding-Nachtest, Stromversorgung, Prüffehler-Zeitpunkte; Ergebnis Pausentest |
 | – | `D:\workspace` | Aufräumen: PR-Worktree und alte `firmware/`-Builds nach `D:\workspace_temp\NerdMiner_v2`, Eintrag in `REPOS.md` |
@@ -50,7 +55,9 @@ Diese Datei dient als Übergabe an die nächste Session.
 
 ### 2. Optional, klein
 
-- TCP-Keepalive auf den Pool-Socket (Fork shaftfx, erkennt tote Verbindungen in ~14 s statt ~2 min).
+- Keepalive auswerten: `poollog.txt` lesen. Erwartung: `pool_conn` bleibt 1. Neuverbindungen mit `gap` um 25 s ohne WLAN-Abbruch
+  wären Keepalive-Abbrüche; bei dem schwachen WLAN von nerd46BC/nerd7990 prüfen, ob das Fehlalarme sind (dann Werte lockern).
+  Echter Test einer toten Verbindung bräuchte eine Firewall-Regel mit Admin-Rechten (Proxy auf dem PC, Verbindung sperren).
 - PR #725 (fremd): Auto-Helligkeit über den Lichtsensor der CYD.
 - Unverändert: Versionsanzeige (`git describe` ohne `--tags`), `README.md:198`.
 
@@ -74,5 +81,5 @@ Diese Datei dient als Übergabe an die nächste Session.
 ## Aktionen in der neuen Session — Empfehlung
 
 1. `gh pr view 727 831 832 833 -R BitMaker-hub/NerdMiner_v2` (bzw. einzeln) auf Antworten/Reviews prüfen.
-2. `~/.platformio/penv/Scripts/python.exe tools/ota_upload.py --list` (in `D:\workspace\NerdMiner_v2`): alle vier auf `-367-g7d2ee8a`, ohne Neustart?
+2. `~/.platformio/penv/Scripts/python.exe tools/ota_upload.py --list` (in `D:\workspace\NerdMiner_v2`): alle vier auf `-369-g5c44b2a`, ohne Neustart? Danach `poollog.txt` auswerten (Punkt 2).
 3. Danach nach Bedarf Punkt 2 der offenen Punkte.
