@@ -10,9 +10,9 @@ Diese Datei dient als Übergabe an die nächste Session.
 ## Ausgangslage
 
 - Branch `awiEdition` auf `5b2c5b1` + Doku-Commit dieses Handovers, gepusht nach `origin`. `upstream/main` unverändert `e3a04b7`.
-- Alle vier CYDs (nerd3CF0 links oben, nerd46BC, nerd7990, nerdFBD4) auf `cf81a51` (`-1.6.3-364-gcf81a51`), seit 2026-09-29 ~07:20.
-  5-min-Kontrolle: 791–793 KH/s je Gerät, Summe 3165,5 KH/s, Selbsttest ok. `src/` ist identisch mit `d62209e`,
-  das vorher 26 h ohne Neustart und ohne WLAN-Abbruch lief.
+- Alle vier CYDs (nerd3CF0 links oben, nerd46BC, nerd7990, nerdFBD4) auf `7d2ee8a` (`-1.6.3-367-g7d2ee8a`), seit 2026-09-29 ~20:50.
+  5-min-Kontrolle: 790–791 KH/s je Gerät, Summe 3162,8 KH/s, Selbsttest ok. Vorher lief `cf81a51` 13,4 h ohne Neustart.
+  Einzige `src/`-Änderung seitdem: `checkError()` per Referenz.
 - Strom: drei Geräte am gemeinsamen Netzteil (1-auf-4-USB-C-Kabel), nerdFBD4 an eigenem Netzteil (egal, kein Unterschied gemessen).
 - Kein Test, kein Logger, kein Zeitplan läuft. PR-Worktree liegt jetzt unter `D:\workspace_temp\NerdMiner_v2\pr-worktree`.
 
@@ -26,6 +26,7 @@ Diese Datei dient als Übergabe an die nächste Session.
 | `f06f90c`, `ef8ce77` | `src/otaUpdate.cpp`, `monitor.cpp` | `/info`: `wifi_disc`, `wifi_reason`, `api_calls`, `api_last_s` |
 | `d62209e` | `src/mining.cpp` | HW-Miner sperrt SHA1- und SHA384/512-Engine dauerhaft (PR #826 erweitert); Korrektheit, kein messbarer Effekt |
 | `e58749f` → `cf81a51` | `src/` | HW-Pause während HTTPS getestet und wieder entfernt |
+| `7d2ee8a` | `src/stratum.cpp`, `stratum.h` | `checkError()` nimmt das JSON-Dokument per Referenz (vorher 4-KB-Kopie auf den Stack) |
 | `70e5ded` | `.gitignore` | `firmware/` (Build-Ausgabe) ignoriert |
 | [#727 (1)](https://github.com/BitMaker-hub/NerdMiner_v2/pull/727#issuecomment-5862577511), [#727 (2)](https://github.com/BitMaker-hub/NerdMiner_v2/pull/727#issuecomment-5884180667) | Upstream | Padding-Nachtest, Stromversorgung, Prüffehler-Zeitpunkte; Ergebnis Pausentest |
 | – | `D:\workspace` | Aufräumen: PR-Worktree und alte `firmware/`-Builds nach `D:\workspace_temp\NerdMiner_v2`, Eintrag in `REPOS.md` |
@@ -44,12 +45,11 @@ Diese Datei dient als Übergabe an die nächste Session.
 
 ### 1. Upstream beobachten
 
-- #727: Gheops Reaktion auf den Pausentest-Kommentar (2026-09-29). Nichts zugesagt.
-- #831–833: ohne Review (Stand 2026-09-29 07:20), konfliktfrei. Gheop: BitMaker-hub antwortet seit Juli auf keine PRs.
+- #727: Gheops Reaktion auf den Pausentest-Kommentar (2026-09-29 05:21 UTC). Stand 2026-09-29 abends: keine Antwort.
+- #831–833: ohne Review und ohne Kommentar (Stand 2026-09-29 abends), konfliktfrei. Gheop: BitMaker-hub antwortet seit Juli auf keine PRs.
 
 ### 2. Optional, klein
 
-- `checkError()` per Referenz statt 4-KB-Kopie auf den Stratum-Stack (`src/stratum.h:52`).
 - TCP-Keepalive auf den Pool-Socket (Fork shaftfx, erkennt tote Verbindungen in ~14 s statt ~2 min).
 - PR #725 (fremd): Auto-Helligkeit über den Lichtsensor der CYD.
 - Unverändert: Versionsanzeige (`git describe` ohne `--tags`), `README.md:198`.
@@ -74,5 +74,5 @@ Diese Datei dient als Übergabe an die nächste Session.
 ## Aktionen in der neuen Session — Empfehlung
 
 1. `gh pr view 727 831 832 833 -R BitMaker-hub/NerdMiner_v2` (bzw. einzeln) auf Antworten/Reviews prüfen.
-2. `~/.platformio/penv/Scripts/python.exe tools/ota_upload.py --list` (in `D:\workspace\NerdMiner_v2`): alle vier auf `-364-gcf81a51`, ohne Neustart?
+2. `~/.platformio/penv/Scripts/python.exe tools/ota_upload.py --list` (in `D:\workspace\NerdMiner_v2`): alle vier auf `-367-g7d2ee8a`, ohne Neustart?
 3. Danach nach Bedarf Punkt 2 der offenen Punkte.
