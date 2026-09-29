@@ -33,7 +33,7 @@ bool verifyPayload (String* line){
   
 }
 
-bool checkError(const StaticJsonDocument<BUFFER_JSON_DOC> doc) {
+bool checkError(const StaticJsonDocument<BUFFER_JSON_DOC>& doc) {
   
   if (!doc.containsKey("error")) return false;
   
