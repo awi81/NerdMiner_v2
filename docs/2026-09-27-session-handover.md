@@ -1,5 +1,8 @@
 # Session-Handover 2026-09-27 bis 29
 
+> Abgelöst durch `2026-09-29-session-handover.md` (Endstand der Session). Diese Datei bleibt als Messprotokoll
+> (Padding-Nachtest, Nachttest Prüffehler, Pausentest, Fork-Suche).
+
 Stichworte: Gheops Padding-Schritt nachgetestet (kein Gewinn), sieben Fixes aus Gheops all-fixes übernommen,
 Fork-Suche, zwei Nachttests zu den Prüffehlern (Netzteil, SHA-Sperren, HTTPS, Modem-Sleep, HW-Pause), zwei Antworten auf #727.
 Vorgänger: `2026-09-26-session-handover-abend.md` (Hashrate 467 → 792 KH/s, Messdetails).

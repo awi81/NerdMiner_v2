@@ -41,6 +41,8 @@ der Erwartung (1 von 65.536 Hashes), es gehen also keine Treffer verloren.
 3. **PRs #831–833**: noch ohne Review, konfliktfrei.
 4. **WLAN-Fix beobachten**: Seit dem Fix ~16 Updates ohne Ausfall (vorher 2 Ausfälle). Weiter prüfen, ob noch ein Gerät 4 min fehlt (`reset_reason` 3 mit kurzer Laufzeit).
    Ursache war: WiFiManager 2.0.17 beendet den blockierenden Hotspot nicht, wenn sich das Gerät im Hintergrund verbindet.
+   ↪ Stand 2026-09-29: ~40 Updates seit dem Fix ohne Ausfall.
 5. **Resthebel**: Der HW-Kern wartet ~75 % der Zeit auf die Engine; SW-Hashing in diese Wartezeit zu verschränken
    brächte grob +3 %, ist aber aufwendig (Assembler, Registerdruck, Risiko für die HW-Taktung).
+   ↪ Vom User am 2026-09-27 verworfen.
 6. Unverändert offen: Versionsanzeige `-1.6.3-…` (`git describe` ohne `--tags`), `README.md:198` („huge app“).
