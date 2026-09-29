@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <WiFi.h>
+#include <lwip/sockets.h>
 #include <esp_task_wdt.h>
 #include <nvs_flash.h>
 #include <nvs.h>
@@ -59,6 +60,11 @@ uint32_t hwIdle = 0;
 // Selbsttest der HW-Schleife beim Start (1 = ok, 0 = falsch, -1 = nicht gelaufen) und Taktdiagnose (/info)
 int hwKat = -1;
 char hwBench[64] = "";
+// Verbindungen zum Pool seit dem Start und, beim letzten Abbruch, wie lange vorher nichts mehr ankam (/info)
+uint32_t poolConnects = 0;
+uint32_t poolDropGapMs = 0;
+static uint32_t poolLastRxMs = 0;
+static bool poolUp = false;
 uint32_t Mhashes = 0;
 uint32_t totalKHashes = 0;
 uint32_t elapsedKHs = 0;
@@ -94,7 +100,12 @@ bool checkPoolConnection(void) {
   if (client.connected()) {
     return true;
   }
-  
+
+  if (poolUp) {
+    poolUp = false;
+    poolDropGapMs = millis() - poolLastRxMs;
+  }
+
   isMinerSuscribed = false;
 
   Serial.println("Client not connected, trying to connect..."); 
@@ -118,6 +129,18 @@ bool checkPoolConnection(void) {
     return false;
   }
 
+  //TCP keepalive: a connection that died silently (pool host gone, NAT entry dropped)
+  //is otherwise only noticed when a write finally times out or no job came for 10 min.
+  //Probe after 10s without data, every 5s, give up after 3 -> detected within ~25s.
+  int ka_on = 1, ka_idle = 10, ka_intvl = 5, ka_cnt = 3;
+  client.setSocketOption(SOL_SOCKET, SO_KEEPALIVE, &ka_on, sizeof(ka_on));
+  client.setOption(TCP_KEEPIDLE, &ka_idle);
+  client.setOption(TCP_KEEPINTVL, &ka_intvl);
+  client.setOption(TCP_KEEPCNT, &ka_cnt);
+
+  poolConnects++;
+  poolUp = true;
+  poolLastRxMs = millis();
   return true;
 }
 
@@ -451,7 +474,8 @@ void runStratumWorker(void *name) {
     while(client.connected() && client.available())
     {
       String line = client.readStringUntil('\n');
-      //Serial.println("  Received message from pool");      
+      poolLastRxMs = millis();
+      //Serial.println("  Received message from pool");
       stratum_method result = parse_mining_method(line);
       switch (result)
       {
