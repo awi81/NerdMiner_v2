@@ -161,6 +161,23 @@ void init_WifiManager()
     // Explicitly set WiFi mode
     WiFi.mode(WIFI_STA);
 
+    // Mit Repeater/Mesh (gleiche SSID an mehreren Zugangspunkten) nimmt der Standard WIFI_FAST_SCAN den
+    // ersten gefundenen, nicht den stärksten: nach einem Neustart landeten zwei Miner bei -83 dBm statt
+    // vorher -64/-49. Alle Kanäle absuchen und nach Signal wählen - für WiFi.begin(ssid, pass) und, über die
+    // gespeicherte Konfiguration, auch für WiFi.begin(), WiFi.reconnect() und das automatische Wiederverbinden.
+    WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
+    WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);
+    {
+        wifi_config_t conf;
+        if (esp_wifi_get_config(WIFI_IF_STA, &conf) == ESP_OK &&
+            (conf.sta.scan_method != WIFI_ALL_CHANNEL_SCAN || conf.sta.sort_method != WIFI_CONNECT_AP_BY_SIGNAL))
+        {
+            conf.sta.scan_method = WIFI_ALL_CHANNEL_SCAN;
+            conf.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
+            esp_wifi_set_config(WIFI_IF_STA, &conf);
+        }
+    }
+
     if (!nvMem.loadConfig(&Settings))
     {
         //No config file on internal flash.
