@@ -108,10 +108,10 @@ static void handleInfo()
   snprintf(json, sizeof(json),
            "{\"host\":\"%s\",\"version\":\"%s\",\"partition\":\"%s\",\"md5\":\"%s\",\"uptime_s\":%lu,\"khs\":%u,\"heap\":%u,"
            "\"hw_hashes\":%u,\"sw_hashes\":%u,\"rssi\":%d,\"draw_ms\":%u,\"hw_checked\":%u,\"hw_errors\":%u,\"hw_kat\":%d,\"hw_idle\":%u,\"hw_bench\":\"%s\",\"reset_reason\":%d,"
-           "\"wifi_disc\":%u,\"wifi_reason\":%d,\"api_calls\":%u,\"api_last_s\":%u,\"pool_conn\":%u,\"pool_gap_s\":%u}",
+           "\"wifi_disc\":%u,\"wifi_reason\":%d,\"api_calls\":%u,\"api_last_s\":%u,\"pool_conn\":%u,\"pool_gap_s\":%u,\"bssid\":\"%s\",\"chan\":%d}",
            s_host, OTA_VERSION, running ? running->label : "?", s_md5.c_str(),
            (unsigned long)(millis() / 1000), elapsedKHs, ESP.getFreeHeap(), hashesHw, hashesSw, (int)WiFi.RSSI(), lastDrawDurationMs, hwChecked, hwErrors, hwKat, hwIdle, hwBench, s_resetReason,
-           s_wifiDisc, s_wifiReason, apiCalls, apiLastMs / 1000, poolConnects, poolDropGapMs / 1000);
+           s_wifiDisc, s_wifiReason, apiCalls, apiLastMs / 1000, poolConnects, poolDropGapMs / 1000, WiFi.BSSIDstr().c_str(), (int)WiFi.channel());
   s_server.send(200, "application/json", json);
 }
 
