@@ -91,6 +91,7 @@ HW-Miner hält von `http.GET()` bis zum Lesen der Antwort an (Schalter `NERD_HW_
 - Außer Gheop keine Hashrate-Arbeit für den klassischen ESP32. Relevanter Fund war PR #826 (übernommen, erweitert).
 - Nicht übernommen, ggf. später: `checkError()` per Referenz statt 4-KB-Kopie (`stratum.h:52`); TCP-Keepalive auf den
   Pool-Socket (shaftfx, erkennt tote Verbindungen in ~14 s); PR #725 Auto-Helligkeit über den Lichtsensor der CYD.
+  ↪ 2026-09-30: `checkError()` per Referenz (`7d2ee8a`) und TCP-Keepalive (`5c44b2a`) übernommen; Auto-Helligkeit vom User abgelehnt.
 - Irrelevant für uns: große mining.notify-Puffer (nur public-pool PPLNS-Port 13333), Board-Ports, Branding.
 
 ---
@@ -102,8 +103,10 @@ HW-Miner hält von `http.GET()` bis zum Lesen der Antwort an (Schalter `NERD_HW_
 3. **WLAN-Fix beobachten:** seit dem Fix ~25 Updates ohne Ausfall; Ausfall meldet `tools/ota_upload.py` als
    `FEHLER - nach dem Neustart nicht die neue Firmware`, dann `reset_reason` in `/info` prüfen.
 4. Optional: `checkError()` per Referenz; Prüffehler-Grundrauschen 80–110 s nach dem Start (Ursache offen, harmlos).
+   ↪ `checkError()` ✅ ERLEDIGT (2026-09-30, `7d2ee8a`).
 5. Bewusst nicht weiterverfolgt: SW-Hashing in HW-Wartezeiten (User 2026-09-27), Modem-Sleep aus, HW-Pause während HTTPS.
    Kleinkram: Versionsanzeige (`git describe` ohne `--tags`), `README.md:198`.
+   ↪ 2026-09-30: bleibt bewusst so (Bildschirm zeigt `CURRENT_VERSION`, siehe Handover 2026-09-30).
 
 ---
 

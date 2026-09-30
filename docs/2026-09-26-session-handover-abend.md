@@ -46,3 +46,4 @@ der Erwartung (1 von 65.536 Hashes), es gehen also keine Treffer verloren.
    brächte grob +3 %, ist aber aufwendig (Assembler, Registerdruck, Risiko für die HW-Taktung).
    ↪ Vom User am 2026-09-27 verworfen.
 6. Unverändert offen: Versionsanzeige `-1.6.3-…` (`git describe` ohne `--tags`), `README.md:198` („huge app“).
+   ↪ 2026-09-30: bleibt bewusst so (siehe Handover 2026-09-30).
