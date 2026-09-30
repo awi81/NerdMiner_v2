@@ -43,10 +43,9 @@ IP-Konflikt des PCs als Ursache der Erreichbarkeits-Aussetzer gefunden, Solo-Rew
 - Ursache geklärt (30.09. abends, per TR-064 der Fritz!Box, geht ohne Login): Die VM Hermes (.164) läuft auf dem PC und
   geht über die WLAN-Brücke mit der MAC des PCs ins Netz. Die Fritz!Box führt die PC-MAC deshalb mit der .164 (DHCP) und
   hält die .116 für frei. Sie vergibt sie an Geräte mit zufälliger MAC: zuletzt ein Android-Handy, im August ein Tablet.
-- Eine Reservierung der .116 auf die PC-MAC hilft daher nicht: Hermes bekäme dann per DHCP die .116.
-- Empfehlung: in der Fritz!Box ein Gerät von Hand anlegen (Heimnetz → Netzwerk → Gerät hinzufügen) mit einer erfundenen
-  MAC und fester IP .116. Dann vergibt die Fritz!Box die .116 nicht mehr. Alternative: PC-IP außerhalb des DHCP-Bereichs,
-  dann aber Verweise auf .116 in moneyBot/Hermes anpassen.
+- Hermes hat die .164 fest eingestellt (netplan, `dhcp4: false`, geprüft 01.10.), der .164-Eintrag in der Fritz!Box ist alt.
+- Behebung: in der Fritz!Box die .116 für das Gerät „awi“ reservieren. Danach gilt die .164 dort als frei, deshalb ein
+  Platzhalter-Gerät mit erfundener MAC und fester .164 anlegen.
 - Letzte Aussetzer 07:08, seitdem keine (Handy nicht im Netz).
 - Nach der Behebung: `poollog.txt` über ≥ 30 min ohne „NICHT ERREICHBAR“, dann Pool-Logger beenden.
 
