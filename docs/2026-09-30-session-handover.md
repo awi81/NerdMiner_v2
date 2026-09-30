@@ -32,7 +32,7 @@ IP-Konflikt des PCs als Ursache der Erreichbarkeits-Aussetzer gefunden, Solo-Rew
 | – | Entscheidungen | Auto-Helligkeit (PR #725): User will sie nicht. Versionsanzeige/`README.md:198` bleiben (Bildschirm zeigt `CURRENT_VERSION`) |
 | – | Frage des Users | Reward: public-pool.io ist solo, ein gefundener Block geht voll an die eigene Adresse (laut Quellcode 1,5 % Dev-Fee erst ab 50 TH/s je Gerät). Keine laufenden Einnahmen; 4 Bitaxe finden im Mittel alle ~3.800 Jahre einen Block (967 EH/s Netz) |
 | – | Aufräumen | Testbuild-Ausgaben nach `D:\workspace_temp\NerdMiner_v2\firmware`, Diagnose-Patch nach `…\diag\diag_patch.py`, Ping-/PC-WLAN-Logger beendet |
-| – | Vertraulichkeit | Vollständige MACs/BSSID aus `2026-09-29-session-handover.md` entfernt (öffentliches Repo); in der Git-Historie ab `3a1abad` noch enthalten |
+| – | Vertraulichkeit | Vollständige MACs/BSSID aus `2026-09-29-session-handover.md` entfernt (öffentliches Repo). Historie am 30.09. bereinigt: alle Doku-Commits nach `31c4e26` zu einem zusammengefasst, Force-Push. Die alten Commits sind auf GitHub per SHA noch abrufbar, ganz weg nur über den GitHub-Support |
 
 ---
 
@@ -40,15 +40,20 @@ IP-Konflikt des PCs als Ursache der Erreichbarkeits-Aussetzer gefunden, Solo-Rew
 
 ### 1. IP-Konflikt des PCs (Entscheidung beim User)
 
-- Empfehlung an den User: in der Fritz!Box die .116 fest für den PC reservieren (IP bleibt, Hermes/moneyBot nutzt ComfyUI/TTS
-  auf dem PC), ggf. Eintrag des Fremdgeräts löschen. MACs stehen in der globalen `CLAUDE.md` (lokal).
-- Stand 21:10: PC weiterhin „Manual“ .116; letzte Aussetzer 07:08, seitdem keine (Fremdgerät vermutlich nicht im Netz).
-- Nach der Behebung: `poollog.txt` über ≥ 30 min ohne „NICHT ERREICHBAR“.
+- Ursache geklärt (30.09. abends, per TR-064 der Fritz!Box, geht ohne Login): Die VM Hermes (.164) läuft auf dem PC und
+  geht über die WLAN-Brücke mit der MAC des PCs ins Netz. Die Fritz!Box führt die PC-MAC deshalb mit der .164 (DHCP) und
+  hält die .116 für frei. Sie vergibt sie an Geräte mit zufälliger MAC: zuletzt ein Android-Handy, im August ein Tablet.
+- Eine Reservierung der .116 auf die PC-MAC hilft daher nicht: Hermes bekäme dann per DHCP die .116.
+- Empfehlung: in der Fritz!Box ein Gerät von Hand anlegen (Heimnetz → Netzwerk → Gerät hinzufügen) mit einer erfundenen
+  MAC und fester IP .116. Dann vergibt die Fritz!Box die .116 nicht mehr. Alternative: PC-IP außerhalb des DHCP-Bereichs,
+  dann aber Verweise auf .116 in moneyBot/Hermes anpassen.
+- Letzte Aussetzer 07:08, seitdem keine (Handy nicht im Netz).
+- Nach der Behebung: `poollog.txt` über ≥ 30 min ohne „NICHT ERREICHBAR“, dann Pool-Logger beenden.
 
-### 2. Git-Historie mit MACs/BSSID (Entscheidung beim User)
+### 2. Git-Historie mit MACs/BSSID
 
-- Commits `3a1abad`…`38fe20a` (nur Doku) enthalten BSSID der Fritz!Box und MACs. Bereinigen hieße: diese Doku-Commits auf
-  `31c4e26` neu zusammenfassen und `awiEdition` per Force-Push ersetzen. Nur mit Freigabe.
+- Erledigt 30.09. (siehe oben). Sicherung des alten Stands nur lokal:
+  `D:\workspace_temp\NerdMiner_v2\backup\awiEdition-vor-bereinigung-2026-09-30.bundle`.
 
 ### 3. Upstream beobachten
 
