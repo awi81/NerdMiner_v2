@@ -46,8 +46,10 @@ IP-Konflikt des PCs als Ursache der Erreichbarkeits-Aussetzer gefunden, Solo-Rew
 - Hermes hat die .164 fest eingestellt (netplan, `dhcp4: false`, geprüft 01.10.), der .164-Eintrag in der Fritz!Box ist alt.
 - Behebung: in der Fritz!Box die .116 für das Gerät „awi“ reservieren. Danach gilt die .164 dort als frei, deshalb ein
   Platzhalter-Gerät mit erfundener MAC und fester .164 anlegen.
-- Letzte Aussetzer 07:08, seitdem keine (Handy nicht im Netz).
-- Nach der Behebung: `poollog.txt` über ≥ 30 min ohne „NICHT ERREICHBAR“, dann Pool-Logger beenden.
+- **Behoben 01.10. nachts:** .116 in der Fritz!Box fest für den PC reserviert, Handy-Eintrag gelöscht. Einen Platzhalter
+  für die .164 lehnt die Fritz!Box ab, weil Hermes sie aktiv nutzt; solange Hermes läuft, vergibt sie sie nicht.
+- Pool-Log bis 02:21 ohne „NICHT ERREICHBAR“ (letzter Eintrag 21:41 = WLAN-Ausfall des PCs, auch die Fritz!Box war weg).
+  Alle vier Miner ohne Pool-Neuverbindung und WLAN-Abbruch. Pool-Logger beendet.
 
 ### 2. Git-Historie mit MACs/BSSID
 
