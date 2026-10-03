@@ -56,6 +56,18 @@ IP-Konflikt des PCs als Ursache der Erreichbarkeits-Aussetzer gefunden, Solo-Rew
 - Erledigt 30.09. (siehe oben). Sicherung des alten Stands nur lokal:
   `D:\workspace_temp\NerdMiner_v2\backup\awiEdition-vor-bereinigung-2026-09-30.bundle`.
 
+### Nachtrag 03.10. (PC aus bis 04.10. ~09:00)
+
+- Pool-Logger lief 02.10. 19:24 – 03.10. 19:59, vor dem Herunterfahren beendet (Neustart: `python poollog.py poollog.txt`
+  in `D:\workspace_temp\NerdMiner_v2\poollog`).
+- 02.10. 22:12: alle vier gleichzeitig neu mit dem Pool verbunden (Lücke je 25 s), Internet lief durch → vermutlich Pool-seitig.
+  Seit 01.10. 01:17 bis zu 5 weitere Neuverbindungen je Miner, Zeitpunkte davor unbekannt.
+- 03.10. 05:48–08:46: Miner vom PC aus nicht erreichbar (07:38–08:46 alle, zeitweise auch die Fritz!Box), Miner selbst ohne
+  Störung, kein Tcpip-4199, keine Systemereignisse. Ursache offen (PC-Seite).
+- 03.10. 15:40: nerdFBD4 nach Umstecken an einem Repeater (-78 dBm) statt an der Fritz!Box. Per OTA (gleiche Firmware,
+  `--force`) neu gestartet → wieder Fritz!Box, -44 dBm. Warum die Suche nach dem stärksten Zugangspunkt beim Einschalten
+  den Repeater wählte, ist offen; tritt es wieder auf, `src/wManager.cpp` prüfen.
+
 ### 3. Upstream beobachten
 
 - #727 (Gheops Reaktion auf den Pausentest-Kommentar), #831–833: Stand 2026-09-30 21:10 keine Reaktion, konfliktfrei.
