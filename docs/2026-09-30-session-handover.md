@@ -68,6 +68,22 @@ IP-Konflikt des PCs als Ursache der Erreichbarkeits-Aussetzer gefunden, Solo-Rew
   `--force`) neu gestartet → wieder Fritz!Box, -44 dBm. Warum die Suche nach dem stärksten Zugangspunkt beim Einschalten
   den Repeater wählte, ist offen; tritt es wieder auf, `src/wManager.cpp` prüfen.
 
+### Nachtrag 04.10. (PC aus bis Mo 05.10. ~09:00)
+
+- Pool-Logger lief 04.10. 09:27 – 20:03, vor dem Herunterfahren beendet.
+- 04.10. 19:08: alle vier gleichzeitig neu mit dem Pool verbunden. Ab ~19:14 WLAN-Störung: Die Fritz!Box (und ein
+  Repeater) wechselten von **Kanal 6 auf Kanal 1**. Viele WLAN-Abbrüche (`wifi_disc` bis 58, Gründe 200/201/202/8/49),
+  vom PC aus zeitweise auch die Fritz!Box nicht erreichbar. Danach hängen **nerd3CF0 (-62 dBm) und nerd7990 (-59 dBm) am
+  Repeater**, nerd46BC/nerdFBD4 an der Fritz!Box. Bis 20:02 noch kurze Aussetzer alle paar Minuten.
+- **Nach dem Neustart:**
+  1. Logger neu starten (`python poollog.py poollog.txt` in `D:\workspace_temp\NerdMiner_v2\poollog`).
+  2. `/info` aller vier prüfen: Kanal, Zugangspunkt, `wifi_disc`. Hängen nerd3CF0/nerd7990 noch am Repeater, per OTA
+     neu starten (`tools/ota_upload.py --force <IP>`, gleiche Firmware, MD5 `46f15d29…`).
+  3. Klären, warum die Fritz!Box den Kanal gewechselt hat (Auto-Kanal? Störung?), ggf. User fragen.
+  4. Offen: Die Firmware bleibt nach einem WLAN-Abbruch am erstbesten Zugangspunkt. Wiederholt sich das, in
+     `src/wManager.cpp` beim Wiederverbinden ebenfalls nach Signal wählen.
+- Keine geplanten Windows-Aufgaben für dieses Projekt.
+
 ### 3. Upstream beobachten
 
 - #727 (Gheops Reaktion auf den Pausentest-Kommentar), #831–833: Stand 2026-09-30 21:10 keine Reaktion, konfliktfrei.
