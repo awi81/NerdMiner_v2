@@ -486,12 +486,75 @@ void init_WifiManager()
     }
 }
 
+//----------------- ROAMING --------------
+// Der ESP32 bleibt am Zugangspunkt, solange die Verbindung hält. Verschwindet der stärkste kurz (z. B. beim
+// Kanalwechsel der Fritz!Box), landet der Miner beim Wiederverbinden am Repeater und bleibt dort. Deshalb bei
+// schwachem Signal regelmäßig im Hintergrund suchen; ist ein anderer Zugangspunkt derselben SSID deutlich
+// stärker, neu verbinden. WiFi.reconnect() sucht dann selbst nach Signal (siehe init_WifiManager).
+#ifndef ROAM_CHECK_ms
+#define ROAM_CHECK_ms (10 * 60 * 1000)  // Abstand der Prüfungen
+#endif
+#ifndef ROAM_RSSI_MAX
+#define ROAM_RSSI_MAX (-55)             // nur prüfen, wenn das eigene Signal schwächer ist
+#endif
+#ifndef ROAM_MIN_GAIN_dB
+#define ROAM_MIN_GAIN_dB 10             // nur wechseln, wenn ein anderer so viel stärker ist
+#endif
+
+uint32_t wifiRoams = 0;  // Wechsel durch die Roaming-Prüfung (/info)
+static uint32_t s_roamLastMs = 0;
+static bool s_roamScanning = false;
+
+static void roamCheck()
+{
+    if (WiFi.status() != WL_CONNECTED)
+    {
+        if (s_roamScanning) { WiFi.scanDelete(); s_roamScanning = false; }
+        return;
+    }
+    if (!s_roamScanning)
+    {
+        if (millis() - s_roamLastMs < ROAM_CHECK_ms) return;
+        s_roamLastMs = millis();
+        if (WiFi.RSSI() > ROAM_RSSI_MAX) return;
+        String ssid = WiFi.SSID();
+        if (WiFi.scanNetworks(true, false, false, 120, 0, ssid.c_str()) == WIFI_SCAN_FAILED) return;
+        s_roamScanning = true;
+        return;
+    }
+
+    int16_t n = WiFi.scanComplete();
+    if (n == WIFI_SCAN_RUNNING) return;
+    s_roamScanning = false;
+
+    String ssid = WiFi.SSID();
+    uint8_t* cur = WiFi.BSSID();
+    int curRssi = WiFi.RSSI();
+    int bestRssi = -127;
+    String bestBssid;
+    for (int i = 0; i < n; i++)
+    {
+        if (WiFi.SSID(i) != ssid) continue;
+        if (cur && memcmp(WiFi.BSSID(i), cur, 6) == 0) { curRssi = WiFi.RSSI(i); continue; }
+        if (WiFi.RSSI(i) > bestRssi) { bestRssi = WiFi.RSSI(i); bestBssid = WiFi.BSSIDstr(i); }
+    }
+    WiFi.scanDelete();
+
+    if (bestRssi >= curRssi + ROAM_MIN_GAIN_dB)
+    {
+        Serial.printf("[WLAN] Roaming: %s mit %d dBm statt %d dBm -> neu verbinden\n", bestBssid.c_str(), bestRssi, curRssi);
+        wifiRoams++;
+        WiFi.reconnect();
+    }
+}
+
 //----------------- MAIN PROCESS WIFI MANAGER --------------
 int oldStatus = 0;
 
 void wifiManagerProcess() {
 
     wm.process(); // avoid delays() in loop when non-blocking and other long running code
+    roamCheck();
 
     int newStatus = WiFi.status();
     if (newStatus != oldStatus) {
