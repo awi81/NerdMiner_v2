@@ -84,6 +84,23 @@ IP-Konflikt des PCs als Ursache der Erreichbarkeits-Aussetzer gefunden, Solo-Rew
      `src/wManager.cpp` beim Wiederverbinden ebenfalls nach Signal wählen.
 - Keine geplanten Windows-Aufgaben für dieses Projekt.
 
+### Nachtrag 06.10. nachts (ohne User, Entscheidungen selbst getroffen)
+
+- Stand 00:22: WLAN weiter auf Kanal 1; nerd3CF0/nerd7990 seit dem 04.10. am Repeater (-60 dBm), Mining normal.
+  Seit 04.10. 19:25 nur nerd3CF0 dreimal neu mit dem Pool verbunden. Pool-Logger wieder gestartet (PID 44936).
+- **Entscheidung: WLAN-Roaming eingebaut** (`426f0e9`, `src/wManager.cpp`). Begründung: Nach einem WLAN-Abbruch
+  bleibt der ESP32 am Zugangspunkt, den er beim Wiederverbinden gefunden hat, auch wenn die Fritz!Box danach wieder
+  stärker ist. Jetzt: alle 10 min, nur bei Signal < -55 dBm, Suche im Hintergrund nach derselben SSID; ist ein anderer
+  Zugangspunkt ≥ 10 dB stärker, `WiFi.reconnect()` (wählt dann selbst nach Signal). Zähler `wifi_roam` in `/info`.
+  Schwellen per Build-Flag (`ROAM_CHECK_ms`, `ROAM_RSSI_MAX`, `ROAM_MIN_GAIN_dB`) änderbar.
+- Test auf nerd3CF0 mit Testvariante (jede Minute, immer wechseln): 6 Wechsel in 6 min, kein Absturz, Mining lief weiter;
+  je Wechsel kurze Unterbrechung + neue Pool-Verbindung (einmal ~80 s nicht erreichbar).
+- Verteilt 00:40 auf alle vier (`-379-g426f0e9`, MD5 `4750fbd1…`): alle an der Fritz!Box, -42…-51 dBm, Selbsttest ok.
+- Nicht getestet: echter Wechsel Repeater → Fritz!Box durch die Prüfung (nach dem Neustart wählten alle schon richtig).
+  Risiko: Sieht der Verbindungsaufbau den stärkeren Zugangspunkt nicht, verbindet der Miner alle 10 min neu.
+- **Offen für den User:** Warum hat die Fritz!Box am 04.10. ~19:14 von Kanal 6 auf 1 gewechselt? WLAN-Einstellungen per
+  TR-064 nur mit Login (HTTP 401). Vermutlich Autokanal; in der Fritz!Box unter WLAN → Funkkanal prüfen.
+
 ### 3. Upstream beobachten
 
 - #727 (Gheops Reaktion auf den Pausentest-Kommentar), #831–833: Stand 2026-09-30 21:10 keine Reaktion, konfliktfrei.
