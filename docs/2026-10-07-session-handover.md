@@ -73,3 +73,16 @@ PC-Abschaltungen und Umzug der Session nach Mission Control. Details im Verlauf 
 2. User nach dem Funkkanal der Fritz!Box fragen (offener Punkt 2).
 3. Läuft alles ruhig: Pool-Logger beenden (`Stop-Process -Id 44936`).
 4. `gh pr view 727 831 832 833 -R BitMaker-hub/NerdMiner_v2` auf Reaktionen prüfen.
+
+---
+
+## Nachtrag 2026-10-08 19:51
+
+- Pool-Logger 07.10. 01:00 bis 08.10. 19:51: einziges Ereignis nerd46BC `POOL` 08.10. 13:46 (Lücke 25 s, nur dieses
+  Gerät). Kein Neustart, kein WLAN-Abbruch, kein AP-Wechsel. Logger beendet (PID 44936).
+- `/info` 19:51: alle vier `wifi_roam` 0, Fritz!Box-BSSID, Kanal 1, -46…-52 dBm, Laufzeit ~67 h.
+- Funkkanal: laut User „müsste fest eingestellt sein“ (nicht geprüft). Dann war der Wechsel 6 → 1 am 04.10. kein
+  Autokanal. Ursache offen; klären ließe sie sich im Fritz!Box-Ereignisprotokoll (System → Ereignisse, WLAN) um
+  04.10. ~19:14. Mit der Roaming-Firmware niedrige Priorität.
+- Upstream #727, #831–833: weiter keine Reaktion (letzte Aktivität 29.09. bzw. 26.09.).
+- Offen bleibt nur Punkt 1 (Roaming im Ernstfall), testbar erst beim nächsten Repeater-Fall.
