@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Statusnotiz 21.10.2026 – NerdMiner awiEdition</title>
+<link rel="stylesheet" href="stil.css">
+<script src="navi.js"></script>
+</head>
+<body>
+<div class="layout">
+<nav id="navi"></nav>
+<main><article class="seite">
+<h1 id="titel">Statusnotiz 21.10.2026</h1>
+<p>Stand 21.10.2026, 01:10. Schließt an die letzte Übergabe <a href="2026-10-07-session-handover.md">2026-10-07-session-handover.md</a> (Nachtrag 08.10.) an. Erste HTML-Seite des Repos; die älteren Übergaben bleiben als .md, bis der Betreiber die Umwandlung freigibt.</p>
+
+<h2 id="miner">Miner</h2>
+<p>Alle vier laufen seit dem Roaming-Update am 06.10. ohne Neustart (ca. 15 Tage), ohne WLAN-Abbruch und ohne Roaming-Wechsel. Alle hängen am selben Zugangspunkt (Fritz!Box, Kanal 1).</p>
+<div class="tabelle"><table>
+<thead><tr><th>IP</th><th>Version</th><th>Kanal</th><th>Signal</th><th>wifi_roam</th><th>wifi_disc</th><th>pool_conn</th><th>KH/s</th></tr></thead>
+<tbody>
+<tr><td>.173</td><td>426f0e9</td><td>1</td><td>-50 dBm</td><td>0</td><td>0</td><td>23</td><td>762</td></tr>
+<tr><td>.184</td><td>426f0e9</td><td>1</td><td>-51 dBm</td><td>0</td><td>0</td><td>27</td><td>827</td></tr>
+<tr><td>.196</td><td>426f0e9</td><td>1</td><td>-52 dBm</td><td>0</td><td>0</td><td>16</td><td>761</td></tr>
+<tr><td>.185</td><td>426f0e9</td><td>1</td><td>-43 dBm</td><td>0</td><td>0</td><td>27</td><td>823</td></tr>
+</tbody>
+</table></div>
+<p>Pool-Neuverbindungen: 16–27 in 15 Tagen, längste Lücke 25–76 s. Prüffehler der Hardware-Engine ca. 0,007 % (bekannt, harmlos).</p>
+
+<h2 id="upstream">Upstream</h2>
+<ul>
+<li>#727 offen, letzter Kommentar von uns am 29.09., keine Reaktion.</li>
+<li>#831, #832, #833 offen seit 26.09., ohne Kommentar oder Review.</li>
+<li>Letzter Upstream-Commit 14.06.2026; das Projekt wird kaum gepflegt.</li>
+</ul>
+
+<h2 id="offen">Offen</h2>
+<ul>
+<li>Roaming im Ernstfall (Repeater → Fritz!Box) weiter ungetestet. Prüfbar erst, wenn wieder ein Miner am Repeater hängt. Erkennungszeichen eines Fehlers: <code>wifi_roam</code> steigt bei gleicher <code>bssid</code>.</li>
+<li>Ursache des Kanalwechsels 6 → 1 am 04.10. ungeklärt (Fritz!Box-Ereignisprotokoll), niedrige Priorität.</li>
+<li>Upstream-PRs gelegentlich auf Reaktionen prüfen.</li>
+</ul>
+
+<h2 id="betreiber">Für den Betreiber (Ja/Nein)</h2>
+<ol>
+<li>Die alten md-Übergaben in <code>docs/</code> in HTML umwandeln? Empfehlung: Nein. Sie sind abgeschlossene Verläufe, die Umwandlung kostet Kontingent ohne Nutzen; neue Doku entsteht ohnehin als HTML.</li>
+</ol>
+</article></main>
+</div>
+</body>
+</html>
